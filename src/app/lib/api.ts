@@ -161,7 +161,7 @@ export function getDashboardSummary(): Promise<DashboardSummary> {
   return request("/wakefit/dashboard/summary");
 }
 
-export function getApprovedScans(days = 7, modelName?: string): Promise<ApprovedScansPoint[]> {
+export function getApprovedScans(days = 30, modelName?: string): Promise<ApprovedScansPoint[]> {
   return request(`/wakefit/dashboard/approved-scans${qs({ days, modelName })}`);
 }
 

@@ -74,6 +74,17 @@ function fmtTime(iso: string | null | undefined): string {
   return d.toLocaleString();
 }
 
+function formatChartDate(value: string): string {
+  if (!value) return "";
+
+  const raw = value.includes("T") ? value.slice(0, 10) : value;
+  const [year, month, day] = raw.split("-").map(part => Number(part));
+
+  if (![year, month, day].every(Number.isFinite)) return value;
+
+  return `${String(day).padStart(2, "0")}-${String(month).padStart(2, "0")}-${String(year).slice(-2)}`;
+}
+
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -285,7 +296,7 @@ function DashboardView() {
     try {
       const [s, c, r, m] = await Promise.all([
         api.getDashboardSummary(),
-        api.getApprovedScans(7, chartModel === "all" ? undefined : chartModel),
+        api.getApprovedScans(30, chartModel === "all" ? undefined : chartModel),
         api.getRecentScans(6),
         api.getModels(),
       ]);
@@ -308,10 +319,9 @@ function DashboardView() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <KpiCard label="Total Scans Today" value={summary?.totalScansToday ?? 0} sub="Across all lines" icon={Activity} />
         <KpiCard label="Active Models" value={summary?.activeModels ?? 0} sub={`${summary?.totalModelsConfigured ?? 0} total configured`} icon={Package} />
-        <KpiCard label="Approved (7d)" value={chartData.reduce((s, d) => s + d.count, 0)} sub="OK scans, last 7 days" icon={TrendingUp} />
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -319,7 +329,7 @@ function DashboardView() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-semibold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 16 }}>
-                Last 7 Days — Approved Scans
+                Last 30 Days — Approved Scans
               </h3>
               <p className="text-xs text-[#44474e]">OK scans only</p>
             </div>
@@ -335,17 +345,28 @@ function DashboardView() {
               <ChevronDown className="w-3 h-3 text-[#44474e] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={195}>
-            <BarChart data={chartData} barGap={4} barCategoryGap="35%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-              <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#44474e" }} axisLine={false} tickLine={false}
-                tickFormatter={(d: string) => d.slice(5)} />
-              <YAxis tick={{ fontSize: 11, fill: "#44474e" }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip contentStyle={{ borderRadius: 6, border: "1px solid #e2e2e8", fontSize: 12 }}
-                formatter={(v: number) => [v, "Approved"]} />
-              <Bar dataKey="count" name="Approved" fill="#2D6A4F" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: `${Math.max(520, chartData.length * 60)}px`, height: 195 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} barGap={4} barCategoryGap="35%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 11, fill: "#44474e" }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                    minTickGap={10}
+                    tickFormatter={(d: string) => formatChartDate(d)}
+                  />
+                  <YAxis tick={{ fontSize: 11, fill: "#44474e" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ borderRadius: 6, border: "1px solid #e2e2e8", fontSize: 12 }}
+                    formatter={(v: number) => [v, "Approved"]} />
+                  <Bar dataKey="count" name="Approved" fill="#2D6A4F" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </Card>
 
         <Card className="p-5 flex flex-col">
@@ -790,12 +811,12 @@ function ScanView({ session }: { session: Session }) {
 
 // ─── History View ─────────────────────────────────────────────────────────────
 
-type TimeRange = "today" | "3d" | "7d";
-const TIME_RANGE_DAYS: Record<TimeRange, number> = { today: 1, "3d": 3, "7d": 7 };
-const TIME_RANGE_LABELS: Record<TimeRange, string> = { today: "Today", "3d": "Last 3 Days", "7d": "Last 7 Days" };
+type TimeRange = "today" | "3d" | "7d" | "30d";
+const TIME_RANGE_DAYS: Record<TimeRange, number> = { today: 1, "3d": 3, "7d": 7, "30d": 30 };
+const TIME_RANGE_LABELS: Record<TimeRange, string> = { today: "Today", "3d": "Last 3 Days", "7d": "Last 7 Days", "30d": "Last 30 Days" };
 
 function HistoryView() {
-  const [timeRange, setTimeRange] = useState<TimeRange>("7d");
+  const [timeRange, setTimeRange] = useState<TimeRange>("30d");
   const [filterModel, setFilterModel] = useState("all");
   const [search, setSearch] = useState("");
   const [sortCol, setSortCol] = useState<"time" | "modelName" | "operatorUsername">("time");
@@ -878,15 +899,27 @@ function HistoryView() {
             {filtered.length} approved this period
           </span>
         </div>
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={chartData} barGap={4}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-            <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#44474e" }} axisLine={false} tickLine={false} tickFormatter={(d: string) => d.slice(5)} />
-            <YAxis tick={{ fontSize: 11, fill: "#44474e" }} axisLine={false} tickLine={false} allowDecimals={false} />
-            <Tooltip contentStyle={{ borderRadius: 6, border: "1px solid #e2e2e8", fontSize: 12 }} formatter={(v: number) => [v, "Approved"]} />
-            <Bar dataKey="count" name="Approved" fill="#2D6A4F" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="overflow-x-auto">
+          <div style={{ minWidth: `${Math.max(520, chartData.length * 60)}px`, height: 180 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis
+                  dataKey="day"
+                  tick={{ fontSize: 11, fill: "#44474e" }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}
+                  minTickGap={10}
+                  tickFormatter={(d: string) => formatChartDate(d)}
+                />
+                <YAxis tick={{ fontSize: 11, fill: "#44474e" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={{ borderRadius: 6, border: "1px solid #e2e2e8", fontSize: 12 }} formatter={(v: number) => [v, "Approved"]} />
+                <Bar dataKey="count" name="Approved" fill="#2D6A4F" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </Card>
 
       <Card className="px-5 py-3">
@@ -902,7 +935,7 @@ function HistoryView() {
             {models.map(m => <option key={m.partNumber} value={m.modelName}>{m.modelName}</option>)}
           </select>
           <div className="flex rounded-lg border border-[#e2e2e8] overflow-hidden text-sm">
-            {(["today", "3d", "7d"] as TimeRange[]).map(t => (
+            {(["today", "3d", "7d", "30d"] as TimeRange[]).map(t => (
               <button key={t} onClick={() => setTimeRange(t)}
                 className={`px-3 py-2 font-medium transition-colors whitespace-nowrap ${timeRange === t ? "bg-[#031f41] text-white" : "text-[#44474e] hover:bg-[#f3f3f9]"}`}>
                 {TIME_RANGE_LABELS[t]}
