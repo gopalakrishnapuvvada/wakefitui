@@ -213,7 +213,7 @@ function Sidebar({ view, setView, session, onLogout }: {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-xs font-medium truncate">{session.username}</p>
-            <p className="text-white/40 text-[10px] truncate">{capitalize(session.role)}</p>
+            {/* <p className="text-white/40 text-[10px] truncate">{capitalize(session.role)}</p> */}
           </div>
           <button onClick={onLogout} title="Sign out" className="p-0">
             <LogOut className="w-3.5 h-3.5 text-white/30 hover:text-white/70 cursor-pointer flex-shrink-0 transition-colors" />
@@ -269,7 +269,7 @@ function Header({ title, sub, session }: { title: string; sub?: string; session:
         </div>
         <div className="flex items-center gap-2 pl-3 pr-3 py-1.5 rounded-lg border border-[#e2e2e8] bg-[#f9f9ff]">
           <Shield className="w-3.5 h-3.5 text-[#44474e]" />
-          <span className="text-xs font-medium text-[#191c20]">{session.username}</span>
+          {/* <span className="text-xs font-medium text-[#191c20]">{session.username}</span> */}
           <RoleBadge role={session.role} />
         </div>
       </div>
