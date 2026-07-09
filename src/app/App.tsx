@@ -476,7 +476,8 @@ function ScanView({ session }: { session: Session }) {
       .catch(e => setModelsError(e.message || "Failed to load models"));
   }, []);
 
-  const selectedModel = models.find(m => m.partNumber === selectedPartNumber) || null;
+  const activeModels = models.filter((model) => model.active);
+  const selectedModel = activeModels.find((model) => model.partNumber === selectedPartNumber) || null;
 
   const handleSelectModel = (pn: string) => {
     setSelectedPartNumber(pn);
@@ -584,8 +585,8 @@ function ScanView({ session }: { session: Session }) {
             className="w-full appearance-none px-4 py-3 pr-10 rounded-lg border border-[#e2e2e8] bg-white text-sm font-medium text-[#191c20] outline-none focus:border-[#031f41] transition-colors cursor-pointer"
           >
             <option value="">— Choose a model —</option>
-            {models.map(m => (
-              <option key={m.partNumber} value={m.partNumber}>{m.modelName} ({m.category})</option>
+            {activeModels.map((model) => (
+              <option key={model.partNumber} value={model.partNumber}>{model.modelName} ({model.category})</option>
             ))}
           </select>
           <ChevronDown className="w-4 h-4 text-[#44474e] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1540,6 +1541,44 @@ function LoginView({ onLogin }: { onLogin: (s: Session) => void }) {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<api.ApiUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadUsers = async () => {
+      try {
+        const response = await api.getUsers();
+        if (!active) return;
+
+        setUsers(response);
+        setUsersError(null);
+        setUsername(prev => prev || response[0]?.username || "");
+      } catch (err: any) {
+        if (!active) return;
+
+        const fallbackUsers: api.ApiUser[] = [
+          { username: "admin", role: "admin", lastActive: null },
+          { username: "supervisor", role: "supervisor", lastActive: null },
+          { username: "operator", role: "operator", lastActive: null },
+        ];
+        setUsers(fallbackUsers);
+        setUsersError(err instanceof api.ApiError ? err.message : "Unable to load users from the backend.");
+        setUsername(prev => prev || fallbackUsers[0].username);
+      } finally {
+        if (active) {
+          setUsersLoading(false);
+        }
+      }
+    };
+
+    loadUsers();
+    return () => { active = false; };
+  }, []);
+
+  const selectedUser = users.find((user) => user.username === username) ?? null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1564,20 +1603,41 @@ function LoginView({ onLogin }: { onLogin: (s: Session) => void }) {
         </div>
 
         <div className="bg-white rounded-xl border border-[#e2e2e8] shadow-sm p-8">
-          <h2 className="text-lg font-bold text-[#191c20] mb-1" style={{ fontFamily: "Barlow Condensed, sans-serif" }}>Sign in to your account</h2>
-          <p className="text-xs text-[#44474e] mb-6">Enter your credentials to access the QC dashboard</p>
+          {/* <h2 className="text-lg font-bold text-[#191c20] mb-1" style={{ fontFamily: "Barlow Condensed, sans-serif" }}>Sign in to your account</h2> */}
+          {/* <p className="text-xs text-[#44474e] mb-6">Enter your credentials to access the QC dashboard</p> */}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-[#191c20] mb-1.5">Username</label>
-              <input
-                type="text"
+              <select
                 value={username}
                 onChange={e => { setUsername(e.target.value); setError(""); }}
-                placeholder="admin / supervisor / operator"
                 className="w-full px-3 py-2.5 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors"
                 required
-              />
+                disabled={usersLoading}
+              >
+                <option value="">{usersLoading ? "Loading users..." : "Select a username"}</option>
+                {users.map((user) => (
+                  <option key={user.username} value={user.username}>
+                    {user.username}
+                  </option>
+                ))}
+              </select>
+              {usersError && (
+                <p className="mt-2 text-[11px] text-amber-700">{usersError}</p>
+              )}
+              {/* {selectedUser && (
+                <div className="mt-2 rounded-lg border border-[#e2e2e8] bg-[#f7f9fc] px-3 py-2 text-xs text-[#44474e]">
+                  <div className="flex items-center justify-between">
+                    <span>Role</span>
+                    <span className="font-medium text-[#191c20]">{capitalize(selectedUser.role)}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span>Last active</span>
+                    <span className="font-medium text-[#191c20]">{fmtTime(selectedUser.lastActive)}</span>
+                  </div>
+                </div>
+              )} */}
             </div>
             <div>
               <label className="block text-sm font-medium text-[#191c20] mb-1.5">Password</label>
@@ -1610,13 +1670,6 @@ function LoginView({ onLogin }: { onLogin: (s: Session) => void }) {
             </button>
           </form>
 
-          <div className="mt-5 pt-4 border-t border-[#e2e2e8]">
-            <p className="text-[10px] text-[#44474e] text-center">
-              Usernames are fixed: <span className="font-mono font-semibold text-[#191c20]">admin</span>,{" "}
-              <span className="font-mono font-semibold text-[#191c20]">supervisor</span>,{" "}
-              <span className="font-mono font-semibold text-[#191c20]">operator</span>. Passwords are set in the SQLite users table.
-            </p>
-          </div>
         </div>
       </div>
     </div>
