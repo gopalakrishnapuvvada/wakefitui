@@ -6,7 +6,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import {
-  LayoutDashboard, ScanLine, ClipboardList, Package, Users, Bell,
+  LayoutDashboard, ScanLine, ClipboardList, Package, Users,
   ChevronDown, Search, Plus, Edit2, Trash2, CheckCircle2, XCircle,
   AlertTriangle, Printer, ChevronRight, Settings, LogOut,
   Shield, Eye, EyeOff, X, Check, ArrowUpDown, TrendingUp,
@@ -267,9 +267,6 @@ function Header({ title, sub, session }: { title: string; sub?: string; session:
             {online === "online" ? "System Online" : online === "offline" ? "Backend Unreachable" : "Checking…"}
           </span>
         </div>
-        <button className="relative p-2 rounded-lg hover:bg-[#f3f3f9] transition-colors">
-          <Bell style={{ width: 18, height: 18 }} className="text-[#44474e]" />
-        </button>
         <div className="flex items-center gap-2 pl-3 pr-3 py-1.5 rounded-lg border border-[#e2e2e8] bg-[#f9f9ff]">
           <Shield className="w-3.5 h-3.5 text-[#44474e]" />
           <span className="text-xs font-medium text-[#191c20]">{session.username}</span>
