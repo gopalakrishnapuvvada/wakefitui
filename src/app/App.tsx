@@ -709,10 +709,11 @@ function ScanView({ session }: { session: Session }) {
                     )}
                   </div>
                   {hasValue && status === "nok" && (
-                    <p className="text-[10px] text-red-600 mt-1.5 font-medium">✕ Out of spec — must be {p.min}–{p.max} {p.unit}</p>
+                    // <p className="text-[10px] text-red-600 mt-1.5 font-medium">✕ Out of spec — must be {p.min}–{p.max} {p.unit}</p>
+                    <p className="text-[10px] text-red-600 mt-1.5 font-medium"></p>
                   )}
                   {hasValue && status === "warn" && (
-                    <p className="text-[10px] text-amber-600 mt-1.5 font-medium">⚠ Near threshold — review before approving</p>
+                    <p className="text-[10px] text-amber-600 mt-1.5 font-medium"></p>
                   )}
                 </div>
               );
@@ -887,7 +888,7 @@ function HistoryView() {
 
   return (
     <div className="space-y-5">
-      <Card className="p-5">
+      {/* <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-semibold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 17 }}>
@@ -920,7 +921,7 @@ function HistoryView() {
             </ResponsiveContainer>
           </div>
         </div>
-      </Card>
+      </Card> */}
 
       <Card className="px-5 py-3">
         <div className="flex items-center gap-3 flex-wrap">
@@ -1402,14 +1403,14 @@ function UsersView({ session }: { session: Session }) {
 
   return (
     <div className="space-y-5">
-      <div>
+      {/* <div>
         <h2 className="font-bold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 20 }}>User Management</h2>
         <p className="text-xs text-[#44474e] mt-0.5">
           3 fixed accounts (admin / supervisor / operator) — {isAdmin ? "you can reset any account's password" : "read-only view"}
         </p>
-      </div>
+      </div> */}
 
-      <div className="grid grid-cols-3 gap-4">
+      {/* <div className="grid grid-cols-3 gap-4">
         {(["operator", "supervisor", "admin"] as Role[]).map(role => (
           <Card key={role} className="p-4">
             <div className="flex items-center gap-2 mb-3">
@@ -1425,7 +1426,7 @@ function UsersView({ session }: { session: Session }) {
             </ul>
           </Card>
         ))}
-      </div>
+      </div> */}
 
       {error && <ErrorBanner message={error} onRetry={load} />}
 
