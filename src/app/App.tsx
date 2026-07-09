@@ -878,6 +878,34 @@ function HistoryView() {
     return data;
   }, [rows, search, sortCol, sortDir]);
 
+  const exportHistory = () => {
+    const headers = ["Part Number", "Model", "Timestamp", "Operator", "Readings"];
+    const rowsToExport = filtered.map(r => [
+      r.partNumber,
+      r.modelName,
+      fmtTime(r.time),
+      r.operatorUsername || "",
+      Object.entries(r.readings).map(([key, value]) => `${key}: ${value}`).join("; "),
+    ]);
+
+    const tableRows = rowsToExport.map(row => `
+      <tr>${row.map(cell => `<td>${String(cell)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")}</td>`).join("")}</tr>`).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><table><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr>${tableRows}</table></body></html>`;
+    const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `wakefit-history-${timeRange}.xls`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  };
+
   const toggleSort = (col: typeof sortCol) => {
     if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortCol(col); setSortDir("asc"); }
@@ -942,6 +970,9 @@ function HistoryView() {
           </div>
           <button onClick={load} className="flex items-center gap-1 text-xs text-[#2b6485] font-medium hover:underline">
             <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
+          <button onClick={exportHistory} className="flex items-center gap-1 text-xs text-[#2b6485] font-medium hover:underline">
+            Export
           </button>
           <span className="text-xs text-[#44474e] ml-auto">{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>
         </div>
