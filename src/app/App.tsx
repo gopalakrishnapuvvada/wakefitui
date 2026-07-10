@@ -82,7 +82,7 @@ function formatChartDate(value: string): string {
 
   if (![year, month, day].every(Number.isFinite)) return value;
 
-  return `${String(day).padStart(2, "0")}-${String(month).padStart(2, "0")}-${String(year).slice(-2)}`;
+  return `${String(day).padStart(2, "0")}-${String(month).padStart(2, "0")}`;
 }
 
 function capitalize(s: string): string {
