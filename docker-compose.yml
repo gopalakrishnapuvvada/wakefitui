@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wakefit-ui
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      - TZ=Asia/Kolkata
+      - NODE_ENV=production
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
