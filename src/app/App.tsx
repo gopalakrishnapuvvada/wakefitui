@@ -267,11 +267,11 @@ function Header({ title, sub, session }: { title: string; sub?: string; session:
             {online === "online" ? "System Online" : online === "offline" ? "Backend Unreachable" : "Checking…"}
           </span>
         </div>
-        <div className="flex items-center gap-2 pl-3 pr-3 py-1.5 rounded-lg border border-[#e2e2e8] bg-[#f9f9ff]">
+        {/* <div className="flex items-center gap-2 pl-3 pr-3 py-1.5 rounded-lg border border-[#e2e2e8] bg-[#f9f9ff]">
           <Shield className="w-3.5 h-3.5 text-[#44474e]" />
-          {/* <span className="text-xs font-medium text-[#191c20]">{session.username}</span> */}
+          <span className="text-xs font-medium text-[#191c20]">{session.username}</span>
           <RoleBadge role={session.role} />
-        </div>
+        </div> */}
       </div>
     </header>
   );
