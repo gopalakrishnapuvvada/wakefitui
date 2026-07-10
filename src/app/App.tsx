@@ -294,7 +294,7 @@ function DashboardView() {
       const [s, c, r, m] = await Promise.all([
         api.getDashboardSummary(),
         api.getApprovedScans(30, chartModel === "all" ? undefined : chartModel),
-        api.getRecentScans(6),
+        api.getRecentScans(10),
         api.getModels(),
       ]);
       setSummary(s); setChartData(c); setRecent(r); setModels(m);
@@ -995,7 +995,7 @@ function HistoryView() {
                     { key: "readings", label: "Readings", sortable: false },
                     { key: "time", label: "Timestamp", sortable: true },
                     { key: "operatorUsername", label: "Operator", sortable: true },
-                    { key: "print", label: "", sortable: false },
+                    { key: "print", label: "Actions", sortable: false },
                   ].map(col => (
                     <th key={col.key} className="text-left px-5 py-3 text-xs font-semibold text-[#44474e] uppercase tracking-wide">
                       {col.sortable ? (

@@ -165,7 +165,7 @@ export function getApprovedScans(days = 30, modelName?: string): Promise<Approve
   return request(`/wakefit/dashboard/approved-scans${qs({ days, modelName })}`);
 }
 
-export function getRecentScans(limit = 6): Promise<RecentScan[]> {
+export function getRecentScans(limit = 10): Promise<RecentScan[]> {
   return request(`/wakefit/dashboard/recent-scans${qs({ limit })}`);
 }
 
