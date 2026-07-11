@@ -1247,18 +1247,73 @@ function ModelsView() {
     setShowModal(true);
   };
 
+  const validateModelForm = (): string | null => {
+    if (!editingPartNumber && !form.partNumber.trim()) {
+      return "Part Number is required.";
+    }
+
+    if (!form.modelName.trim()) {
+      return "Model Name is required.";
+    }
+
+    const activeParams = formParams.filter((param) => param.active);
+    if (activeParams.length === 0) {
+      return "At least one active parameter is required.";
+    }
+
+    const usedChannels = new Set<number>();
+    for (const param of activeParams) {
+      if (!Number.isInteger(param.channel) || !CHANNEL_OPTIONS.includes(param.channel)) {
+        return "Each active parameter must have a valid channel (0-7).";
+      }
+
+      if (usedChannels.has(param.channel)) {
+        return `Channel ${param.channel} is assigned more than once.`;
+      }
+      usedChannels.add(param.channel);
+
+      if (!param.label.trim()) {
+        return `Label is required for channel ${param.channel}.`;
+      }
+
+      if (!param.unit.trim()) {
+        return `Unit is required for channel ${param.channel}.`;
+      }
+    }
+
+    return null;
+  };
+
   const handleSave = async () => {
     setSaveError(null);
+
+    const validationError = validateModelForm();
+    if (validationError) {
+      setSaveError(validationError);
+      return;
+    }
+
     setSaving(true);
+
+    const payload = {
+      modelName: form.modelName.trim(),
+      category: form.category.trim(),
+      active: form.active,
+      parameters: formParams.map((param) => ({
+        ...param,
+        name: param.name.trim(),
+        label: param.label.trim(),
+        unit: param.unit.trim(),
+      })),
+    };
+
     try {
       if (editingPartNumber) {
-        await api.updateModel(editingPartNumber, {
-          modelName: form.modelName, category: form.category, active: form.active, parameters: formParams,
-        });
+        await api.updateModel(editingPartNumber, payload);
       } else {
         await api.createOrUpsertModel({
-          partNumber: form.partNumber.trim(), modelName: form.modelName, category: form.category,
-          active: form.active, parameters: formParams,
+          partNumber: form.partNumber.trim(),
+          ...payload,
         });
       }
       setShowModal(false);
@@ -1392,9 +1447,10 @@ function ModelsView() {
             </div>
             <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
               {saveError && <ErrorBanner message={saveError} />}
+              <p className="text-xs text-[#44474e]">Fields marked with <span className="text-[#E63946]">*</span> are required.</p>
               <div>
                 <label className="block text-sm font-medium text-[#191c20] mb-1.5">
-                  Part Number
+                  Part Number <span className="text-[#E63946]">*</span>
                   <span className="ml-1.5 text-xs font-normal text-[#44474e]">Unique key — cannot be changed after creation</span>
                 </label>
                 <input
@@ -1407,7 +1463,7 @@ function ModelsView() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#191c20] mb-1.5">Model Name</label>
+                  <label className="block text-sm font-medium text-[#191c20] mb-1.5">Model Name <span className="text-[#E63946]">*</span></label>
                   <input value={form.modelName} onChange={e => setForm(f => ({ ...f, modelName: e.target.value }))}
                     className="w-full px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors"
                     placeholder="e.g. Chair Model X" />
@@ -1455,7 +1511,7 @@ function ModelsView() {
                     return (
                     <div key={i} className={`rounded-lg border transition-all ${!p.active ? "border-[#e2e2e8] bg-[#f9f9ff] opacity-60" : "border-[#e2e2e8] bg-white"}`}>
                       <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-[#f3f3f9]">
-                        <span className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide w-16 flex-shrink-0">Channel</span>
+                        <span className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide w-16 flex-shrink-0">Channel <span className="text-[#E63946]">*</span></span>
                         <select
                           value={channelOptions.includes(p.channel) ? p.channel : (channelOptions[0] ?? 0)}
                           onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, channel: Number(e.target.value) } : x))}
@@ -1466,7 +1522,7 @@ function ModelsView() {
                             <option key={channel} value={channel}>{channel}</option>
                           ))}
                         </select>
-                        <span className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide w-12 flex-shrink-0 ml-2">Label</span>
+                        <span className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide w-12 flex-shrink-0 ml-2">Label <span className="text-[#E63946]">*</span></span>
                         <input value={p.label}
                           onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
                           disabled={!p.active}
@@ -1488,7 +1544,7 @@ function ModelsView() {
                       </div>
                       <div className="grid grid-cols-[1fr_72px_72px_72px] gap-2 px-3 py-2.5">
                         <div>
-                          <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Parameter Name (key)</p>
+                          <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Parameter Name (key) <span className="text-[#E63946]">*</span></p>
                           <input value={p.name}
                             onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
                             disabled={!p.active}
@@ -1496,7 +1552,7 @@ function ModelsView() {
                             placeholder="e.g. LH" />
                         </div>
                         <div>
-                          <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Unit</p>
+                          <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Unit <span className="text-[#E63946]">*</span></p>
                           <input value={p.unit}
                             onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, unit: e.target.value } : x))}
                             disabled={!p.active}
@@ -1525,7 +1581,7 @@ function ModelsView() {
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#e2e2e8]">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-[#e2e2e8] text-sm font-medium text-[#44474e] hover:bg-[#f3f3f9] transition-colors">Cancel</button>
-              <button onClick={handleSave} disabled={saving || !form.partNumber.trim() || !form.modelName}
+              <button onClick={handleSave} disabled={saving}
                 className="flex items-center gap-2 px-5 py-2 rounded-lg bg-[#031f41] text-white text-sm font-semibold hover:bg-[#1d3557] shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 {saving && <Spinner className="w-3.5 h-3.5" />}
                 {editingPartNumber ? "Save Changes" : "Create Model"}
