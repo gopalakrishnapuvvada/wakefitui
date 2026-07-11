@@ -109,6 +109,7 @@ export interface ScanStartResponse {
 export interface HistoryRow {
   id: number;
   time: string;
+  scanId: string;
   partId: string;
   partNumber: string;
   modelName: string;
@@ -226,6 +227,8 @@ export async function pollScanResult(
 
 export function getHistory(params: {
   days?: number;
+  startDate?: string;
+  endDate?: string;
   partNumber?: string;
   modelName?: string;
   day?: string;

@@ -810,19 +810,16 @@ function ScanView({ session }: { session: Session }) {
 
 // ─── History View ─────────────────────────────────────────────────────────────
 
-type TimeRange = "today" | "3d" | "7d" | "30d";
-const TIME_RANGE_DAYS: Record<TimeRange, number> = { today: 1, "3d": 3, "7d": 7, "30d": 30 };
-const TIME_RANGE_LABELS: Record<TimeRange, string> = { today: "Today", "3d": "Last 3 Days", "7d": "Last 7 Days", "30d": "Last 30 Days" };
-
 function HistoryView() {
-  const [timeRange, setTimeRange] = useState<TimeRange>("30d");
   const [filterModel, setFilterModel] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [search, setSearch] = useState("");
   const [sortCol, setSortCol] = useState<"time" | "modelName" | "operatorUsername">("time");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [models, setModels] = useState<WakefitModel[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [printingId, setPrintingId] = useState<number | null>(null);
   const [printMsg, setPrintMsg] = useState<{ id: number; ok: boolean; text: string } | null>(null);
@@ -840,22 +837,42 @@ function HistoryView() {
     }
   };
 
-  const load = useCallback(async () => {
+  const loadHistory = useCallback(async () => {
     setError(null);
+
+    if (startDate && endDate && startDate > endDate) {
+      setError("Start date must be before or equal to end date.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const [h, m] = await Promise.all([
-        api.getHistory({ days: TIME_RANGE_DAYS[timeRange], modelName: filterModel === "all" ? undefined : filterModel }),
-        api.getModels(),
-      ]);
-      setRows(h); setModels(m);
+      setLoading(true);
+      const h = await api.getHistory({
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
+        modelName: filterModel === "all" ? undefined : filterModel,
+      });
+      setRows(h);
     } catch (e: any) {
       setError(e.message || "Failed to load history");
     } finally {
       setLoading(false);
     }
-  }, [timeRange, filterModel]);
+  }, [filterModel, startDate, endDate]);
 
-  useEffect(() => { setLoading(true); load(); }, [load]);
+  const loadModels = useCallback(async () => {
+    try {
+      const m = await api.getModels();
+      setModels(m);
+    } catch (e: any) {
+      setError(e.message || "Failed to load models");
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadModels();
+  }, [loadModels]);
 
   const chartData = useMemo(() => {
     const byDay: Record<string, number> = {};
@@ -880,8 +897,9 @@ function HistoryView() {
   }, [rows, search, sortCol, sortDir]);
 
   const exportHistory = () => {
-    const headers = ["Part Number", "Model", "Timestamp", "Operator", "Readings"];
+    const headers = ["Scan ID", "Part Number", "Model", "Timestamp", "Operator", "Readings"];
     const rowsToExport = filtered.map(r => [
+      r.scanId,
       r.partNumber,
       r.modelName,
       fmtTime(r.time),
@@ -900,7 +918,7 @@ function HistoryView() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `wakefit-history-${timeRange}.xls`;
+    anchor.download = `wakefit-history.xls`;
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
@@ -961,16 +979,31 @@ function HistoryView() {
             <option value="all">All Models</option>
             {models.map(m => <option key={m.partNumber} value={m.modelName}>{m.modelName}</option>)}
           </select>
-          <div className="flex rounded-lg border border-[#e2e2e8] overflow-hidden text-sm">
-            {(["today", "3d", "7d", "30d"] as TimeRange[]).map(t => (
-              <button key={t} onClick={() => setTimeRange(t)}
-                className={`px-3 py-2 font-medium transition-colors whitespace-nowrap ${timeRange === t ? "bg-[#031f41] text-white" : "text-[#44474e] hover:bg-[#f3f3f9]"}`}>
-                {TIME_RANGE_LABELS[t]}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-[#44474e]">From</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="px-2.5 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41]"
+            />
           </div>
-          <button onClick={load} className="flex items-center gap-1 text-xs text-[#2b6485] font-medium hover:underline">
-            <RefreshCw className="w-3 h-3" /> Refresh
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-[#44474e]">To</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              className="px-2.5 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41]"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <button onClick={() => { setStartDate(""); setEndDate(""); }} className="text-xs text-[#2b6485] font-medium hover:underline">
+              Clear dates
+            </button>
+          )}
+          <button onClick={loadHistory} className="flex items-center gap-1 text-xs text-[#2b6485] font-medium hover:underline">
+            <RefreshCw className="w-3 h-3" /> View
           </button>
           <button onClick={exportHistory} className="flex items-center gap-1 text-xs text-[#2b6485] font-medium hover:underline">
             Export
@@ -979,7 +1012,7 @@ function HistoryView() {
         </div>
       </Card>
 
-      {error && <ErrorBanner message={error} onRetry={load} />}
+      {error && <ErrorBanner message={error} onRetry={loadHistory} />}
 
       <Card>
         {loading ? (
@@ -990,6 +1023,7 @@ function HistoryView() {
               <thead>
                 <tr className="bg-[#f7f9fc] border-b border-[#e2e2e8]">
                   {[
+                    { key: "scanId", label: "Scan ID", sortable: false },
                     { key: "partNumber", label: "Part Number", sortable: false },
                     { key: "modelName", label: "Model", sortable: true },
                     { key: "readings", label: "Readings", sortable: false },
@@ -1011,6 +1045,7 @@ function HistoryView() {
               <tbody>
                 {filtered.map((r, i) => (
                   <tr key={r.id} className={`border-b border-[#e2e2e8] hover:bg-[#f9f9ff] transition-colors ${i === filtered.length - 1 ? "border-0" : ""}`}>
+                    <td className="px-5 py-3"><span className="font-mono text-xs font-semibold text-[#2b6485]">{r.scanId}</span></td>
                     <td className="px-5 py-3"><span className="font-mono text-xs font-semibold text-[#2b6485]">{r.partNumber}</span></td>
                     <td className="px-5 py-3 font-medium text-[#191c20]">{r.modelName}</td>
                     <td className="px-5 py-3">
