@@ -1072,7 +1072,7 @@ function HistoryView() {
         {loading ? (
           <div className="flex items-center justify-center py-16"><Spinner className="w-6 h-6" /></div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[62vh]">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-[#f7f9fc] border-b border-[#e2e2e8]">
