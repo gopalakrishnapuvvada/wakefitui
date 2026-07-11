@@ -55,12 +55,8 @@ function loadSessionFromStorage(): Session | null {
   return null;
 }
 
-function getParamStatus(value: number, min: number, max: number): "ok" | "warn" | "nok" {
-  if (value < min || value > max) return "nok";
-  const range = max - min;
-  const warnZone = range * 0.1;
-  if (value <= min + warnZone || value >= max - warnZone) return "warn";
-  return "ok";
+function getParamStatus(value: number, min: number, max: number): "ok" | "nok" {
+  return value >= min && value <= max ? "ok" : "nok";
 }
 
 function paramPercent(value: number, min: number, max: number): number {
@@ -466,9 +462,10 @@ function ScanView({ session }: { session: Session }) {
   const [record, setRecord] = useState<ScanRecord | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveResult, setSaveResult] = useState<{ saved: boolean; reason?: string } | null>(null);
+  const [saveResult, setSaveResult] = useState<{ saved: boolean; scanId?: string; reason?: string } | null>(null);
   const [printing, setPrinting] = useState(false);
   const [printResult, setPrintResult] = useState<{ printed: boolean; error?: string } | null>(null);
+  const [showLabelDetails, setShowLabelDetails] = useState(false);
 
   useEffect(() => {
     api.getModels()
@@ -518,8 +515,10 @@ function ScanView({ session }: { session: Session }) {
         try {
           const sr = await api.saveScan(finalRecord.scanId, session.username, session.role);
           setSaveResult(sr);
+          setShowLabelDetails(false);
         } catch (e: any) {
           setSaveResult({ saved: false, reason: e.message });
+          setShowLabelDetails(false);
         } finally {
           setSaving(false);
         }
@@ -532,10 +531,11 @@ function ScanView({ session }: { session: Session }) {
 
   const handlePrint = async () => {
     if (!record) return;
+    const labelScanId = saveResult?.scanId || record.scanId;
     setPrinting(true);
     setPrintResult(null);
     try {
-      const res = await api.printLabel(record.scanId, 1);
+      const res = await api.printLabel(labelScanId, 1);
       setPrintResult(res);
     } catch (e: any) {
       setPrintResult({ printed: false, error: e.message });
@@ -555,6 +555,7 @@ function ScanView({ session }: { session: Session }) {
 
   const overallStatus = scanState === "done" ? record?.overallStatus ?? null : null;
   const labelPrinted = printResult?.printed === true;
+  const labelScanId = saveResult?.scanId || record?.scanId || "";
 
   return (
     <div className="max-w-5xl space-y-5">
@@ -661,10 +662,9 @@ function ScanView({ session }: { session: Session }) {
               const pct = hasValue ? paramPercent(result!.value, p.min, p.max) : 0;
 
               const bgColor = !hasValue ? "bg-[#f9f9ff]" :
-                status === "nok" ? "bg-red-50 border-red-200" :
-                status === "warn" ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-200";
+                status === "nok" ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200";
               const valueColor = !hasValue ? "text-[#c4c6cf]" :
-                status === "nok" ? "text-red-600" : status === "warn" ? "text-amber-600" : "text-emerald-700";
+                status === "nok" ? "text-red-600" : "text-emerald-700";
 
               return (
                 <div key={p.channel + p.name} className={`rounded-lg border p-4 transition-all duration-300 ${bgColor}`}>
@@ -676,7 +676,6 @@ function ScanView({ session }: { session: Session }) {
                     <div className="flex-shrink-0">
                       {isReading && <div className="w-5 h-5 rounded-full border-2 border-[#2b6485] border-t-transparent animate-spin" />}
                       {hasValue && status === "ok" && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
-                      {hasValue && status === "warn" && <AlertTriangle className="w-5 h-5 text-amber-500" />}
                       {hasValue && status === "nok" && <XCircle className="w-5 h-5 text-red-500" />}
                     </div>
                   </div>
@@ -695,23 +694,19 @@ function ScanView({ session }: { session: Session }) {
                     </div>
                     {hasValue && (
                       <div className={`h-full rounded-full transition-all duration-500 ${
-                        status === "nok" ? "bg-red-400" : status === "warn" ? "bg-amber-400" : "bg-emerald-400"
+                        status === "nok" ? "bg-red-400" : "bg-emerald-400"
                       }`} style={{ width: `${Math.min(100, Math.max(2, pct))}%` }} />
                     )}
                     {hasValue && (
                       <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm transition-all duration-500"
                         style={{
                           left: `calc(${Math.min(100, Math.max(2, pct))}% - 5px)`,
-                          background: status === "nok" ? "#f87171" : status === "warn" ? "#fbbf24" : "#34d399",
+                          background: status === "nok" ? "#f87171" : "#34d399",
                         }} />
                     )}
                   </div>
                   {hasValue && status === "nok" && (
-                    // <p className="text-[10px] text-red-600 mt-1.5 font-medium">✕ Out of spec — must be {p.min}–{p.max} {p.unit}</p>
-                    <p className="text-[10px] text-red-600 mt-1.5 font-medium"></p>
-                  )}
-                  {hasValue && status === "warn" && (
-                    <p className="text-[10px] text-amber-600 mt-1.5 font-medium"></p>
+                    <p className="text-[10px] text-red-600 mt-1.5 font-medium">Out of specification</p>
                   )}
                 </div>
               );
@@ -775,33 +770,62 @@ function ScanView({ session }: { session: Session }) {
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-6 h-6 rounded-full bg-[#031f41] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</div>
-            <h2 className="font-semibold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 17 }}>Print Label</h2>
-            {record && (
-              <span className="ml-2 font-mono text-xs font-bold text-[#031f41] bg-[#f3f3f9] border border-[#e2e2e8] px-2 py-0.5 rounded">
-                {record.scanId}
-              </span>
-            )}
+            <h2 className="font-semibold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 17 }}>Label</h2>
           </div>
-          <div className="flex items-center gap-4">
-            <button onClick={handlePrint} disabled={printing || saving}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#031f41] text-white text-sm font-semibold hover:bg-[#1d3557] shadow-sm transition-colors disabled:opacity-50">
-              {printing ? <Spinner className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
-              {printing ? "Printing…" : "Print Label"}
-            </button>
-            {printResult?.printed && (
-              <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Label sent to printer
+
+          {!showLabelDetails ? (
+            <div className="flex items-center gap-4">
+              <button onClick={() => setShowLabelDetails(true)} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#031f41] text-white text-sm font-semibold hover:bg-[#1d3557] shadow-sm transition-colors">
+                <Printer className="w-4 h-4" /> Show Label
+              </button>
+              <button onClick={handleReset} className="text-xs text-[#2b6485] hover:underline font-medium">
+                Scan another product →
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-[#e2e2e8] bg-[#f9f9ff] p-4 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-[#191c20]">Label Details</p>
+                  {labelScanId && (
+                    <span className="font-mono text-xs font-bold text-[#031f41] bg-white border border-[#e2e2e8] px-2 py-0.5 rounded">
+                      {labelScanId}
+                    </span>
+                  )}
+                </div>
+                <div className="grid gap-2 text-sm text-[#44474e] sm:grid-cols-2">
+                  <div><span className="font-semibold text-[#191c20]">Scan ID:</span> {labelScanId || "—"}</div>
+                  <div><span className="font-semibold text-[#191c20]">Model:</span> {selectedModel?.modelName || "—"}</div>
+                  <div><span className="font-semibold text-[#191c20]">Timestamp:</span> {record ? fmtTime(record.timestamp) : "—"}</div>
+                  <div><span className="font-semibold text-[#191c20]">Status:</span> <span className="text-emerald-700 font-semibold">✓ OK</span></div>
+                </div>
               </div>
-            )}
-            {printResult && !printResult.printed && (
-              <div className="flex items-center gap-1.5 text-xs text-red-600 font-medium">
-                <XCircle className="w-3.5 h-3.5" /> {printResult.error || "Print failed"}
+
+              <div className="flex items-center gap-4 flex-wrap">
+                <button onClick={handlePrint} disabled={printing || saving}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#031f41] text-white text-sm font-semibold hover:bg-[#1d3557] shadow-sm transition-colors disabled:opacity-50">
+                  {printing ? <Spinner className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
+                  {printing ? "Printing…" : "Print Label"}
+                </button>
+                {printResult?.printed && (
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Label sent to printer
+                  </div>
+                )}
+                {printResult && !printResult.printed && (
+                  <div className="flex items-center gap-1.5 text-xs text-red-600 font-medium">
+                    <XCircle className="w-3.5 h-3.5" /> {printResult.error || "Print failed"}
+                  </div>
+                )}
+                <button onClick={() => setShowLabelDetails(false)} className="text-xs text-[#2b6485] hover:underline font-medium">
+                  Hide Label
+                </button>
+                <button onClick={handleReset} className="ml-auto text-xs text-[#2b6485] hover:underline font-medium">
+                  Scan another product →
+                </button>
               </div>
-            )}
-            <button onClick={handleReset} className="ml-auto text-xs text-[#2b6485] hover:underline font-medium">
-              Scan another product →
-            </button>
-          </div>
+            </div>
+          )}
         </Card>
       )}
     </div>
