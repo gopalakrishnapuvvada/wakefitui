@@ -70,6 +70,13 @@ function fmtTime(iso: string | null | undefined): string {
   return d.toLocaleString();
 }
 
+function fmtDateDDMMYYYY(value: string | null | undefined): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("en-GB");
+}
+
 function formatChartDate(value: string): string {
   if (!value) return "";
 
@@ -1174,6 +1181,9 @@ interface ModelFormState {
 type ParamFormState = ModelParameter;
 
 const CHANNEL_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7];
+const MAX_TEXT_LENGTH = 128;
+const MIN_NUMERIC_VALUE = 0;
+const MAX_NUMERIC_VALUE = 65535;
 
 function getAvailableChannels(params: ParamFormState[], currentIndex: number): number[] {
   const occupied = new Set<number>();
@@ -1202,6 +1212,11 @@ function getChannelOptions(params: ParamFormState[], currentIndex: number): numb
   }
 
   return available;
+}
+
+function clampNumericValue(value: number): number {
+  if (!Number.isFinite(value)) return MIN_NUMERIC_VALUE;
+  return Math.min(MAX_NUMERIC_VALUE, Math.max(MIN_NUMERIC_VALUE, value));
 }
 
 function ModelsView() {
@@ -1252,8 +1267,20 @@ function ModelsView() {
       return "Part Number is required.";
     }
 
+    if (!editingPartNumber && form.partNumber.trim().length > MAX_TEXT_LENGTH) {
+      return `Part Number must be ${MAX_TEXT_LENGTH} characters or less.`;
+    }
+
     if (!form.modelName.trim()) {
       return "Model Name is required.";
+    }
+
+    if (form.modelName.trim().length > MAX_TEXT_LENGTH) {
+      return `Model Name must be ${MAX_TEXT_LENGTH} characters or less.`;
+    }
+
+    if (form.category.trim().length > MAX_TEXT_LENGTH) {
+      return `Category must be ${MAX_TEXT_LENGTH} characters or less.`;
     }
 
     const activeParams = formParams.filter((param) => param.active);
@@ -1276,8 +1303,36 @@ function ModelsView() {
         return `Label is required for channel ${param.channel}.`;
       }
 
+      if (param.label.trim().length > MAX_TEXT_LENGTH) {
+        return `Label for channel ${param.channel} must be ${MAX_TEXT_LENGTH} characters or less.`;
+      }
+
       if (!param.unit.trim()) {
         return `Unit is required for channel ${param.channel}.`;
+      }
+
+      if (param.unit.trim().length > MAX_TEXT_LENGTH) {
+        return `Unit for channel ${param.channel} must be ${MAX_TEXT_LENGTH} characters or less.`;
+      }
+
+      if (param.name.trim().length > MAX_TEXT_LENGTH) {
+        return `Parameter Name for channel ${param.channel} must be ${MAX_TEXT_LENGTH} characters or less.`;
+      }
+
+      if (!Number.isFinite(param.min) || !Number.isFinite(param.max)) {
+        return `Min and Max are required numeric values for channel ${param.channel}.`;
+      }
+
+      if (param.min < MIN_NUMERIC_VALUE || param.max < MIN_NUMERIC_VALUE) {
+        return `Min and Max cannot be negative for channel ${param.channel}.`;
+      }
+
+      if (param.min > MAX_NUMERIC_VALUE || param.max > MAX_NUMERIC_VALUE) {
+        return `Min and Max must be ${MAX_NUMERIC_VALUE} or less for channel ${param.channel}.`;
+      }
+
+      if (param.min > param.max) {
+        return `Min cannot be greater than Max for channel ${param.channel}.`;
       }
     }
 
@@ -1388,7 +1443,7 @@ function ModelsView() {
                         {m.parameters.length > 3 && <span className="text-xs text-[#44474e]">+{m.parameters.length - 3} more</span>}
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-xs text-[#44474e]">{m.updatedAt?.slice(0, 10) || "—"}</td>
+                    <td className="px-5 py-3 text-xs text-[#44474e]">{fmtDateDDMMYYYY(m.updatedAt)}</td>
                     <td className="px-5 py-3">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                         m.active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-[#f3f3f9] text-[#44474e] border-[#e2e2e8]"
@@ -1456,7 +1511,8 @@ function ModelsView() {
                 <input
                   value={form.partNumber}
                   disabled={!!editingPartNumber}
-                  onChange={e => setForm(f => ({ ...f, partNumber: e.target.value }))}
+                  maxLength={MAX_TEXT_LENGTH}
+                  onChange={e => setForm(f => ({ ...f, partNumber: e.target.value.slice(0, MAX_TEXT_LENGTH) }))}
                   className="w-full px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors font-mono tracking-wide disabled:bg-[#f3f3f9]"
                   placeholder="e.g. PN-1001"
                 />
@@ -1464,13 +1520,13 @@ function ModelsView() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#191c20] mb-1.5">Model Name <span className="text-[#E63946]">*</span></label>
-                  <input value={form.modelName} onChange={e => setForm(f => ({ ...f, modelName: e.target.value }))}
+                  <input value={form.modelName} maxLength={MAX_TEXT_LENGTH} onChange={e => setForm(f => ({ ...f, modelName: e.target.value.slice(0, MAX_TEXT_LENGTH) }))}
                     className="w-full px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors"
                     placeholder="e.g. Chair Model X" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#191c20] mb-1.5">Category</label>
-                  <input value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  <input value={form.category} maxLength={MAX_TEXT_LENGTH} onChange={e => setForm(f => ({ ...f, category: e.target.value.slice(0, MAX_TEXT_LENGTH) }))}
                     className="w-full px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors"
                     placeholder="e.g. Office Chair" />
                 </div>
@@ -1523,8 +1579,8 @@ function ModelsView() {
                           ))}
                         </select>
                         <span className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide w-12 flex-shrink-0 ml-2">Label <span className="text-[#E63946]">*</span></span>
-                        <input value={p.label}
-                          onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                        <input value={p.label} maxLength={MAX_TEXT_LENGTH}
+                          onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, label: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
                           disabled={!p.active}
                           className="flex-1 px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
                           placeholder="e.g. Left Handle" />
@@ -1545,31 +1601,31 @@ function ModelsView() {
                       <div className="grid grid-cols-[1fr_72px_72px_72px] gap-2 px-3 py-2.5">
                         <div>
                           <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Parameter Name (key) <span className="text-[#E63946]">*</span></p>
-                          <input value={p.name}
-                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+                          <input value={p.name} maxLength={MAX_TEXT_LENGTH}
+                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, name: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
                             disabled={!p.active}
                             className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
                             placeholder="e.g. LH" />
                         </div>
                         <div>
                           <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Unit <span className="text-[#E63946]">*</span></p>
-                          <input value={p.unit}
-                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, unit: e.target.value } : x))}
+                          <input value={p.unit} maxLength={MAX_TEXT_LENGTH}
+                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, unit: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
                             disabled={!p.active}
                             className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
                             placeholder="mm" />
                         </div>
                         <div>
                           <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Min</p>
-                          <input type="number" value={p.min}
-                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, min: parseFloat(e.target.value) } : x))}
+                          <input type="number" value={p.min} min={MIN_NUMERIC_VALUE} max={MAX_NUMERIC_VALUE}
+                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, min: clampNumericValue(Number(e.target.value)) } : x))}
                             disabled={!p.active}
                             className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]" />
                         </div>
                         <div>
                           <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Max</p>
-                          <input type="number" value={p.max}
-                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, max: parseFloat(e.target.value) } : x))}
+                          <input type="number" value={p.max} min={MIN_NUMERIC_VALUE} max={MAX_NUMERIC_VALUE}
+                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, max: clampNumericValue(Number(e.target.value)) } : x))}
                             disabled={!p.active}
                             className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]" />
                         </div>
