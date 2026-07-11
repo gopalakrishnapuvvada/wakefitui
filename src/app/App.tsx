@@ -962,8 +962,17 @@ function HistoryView() {
     const blob = new Blob([html], { type: "application/vnd.ms-excel" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
+    const now = new Date();
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    const hh = String(now.getHours()).padStart(2, "0");
+    const min = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    const ms = String(now.getMilliseconds()).padStart(3, "0");
+    const reportFileName = `wakefit_report_${dd}${mm}${yyyy}&${hh}${min}${ss}${ms}.xls`;
     anchor.href = url;
-    anchor.download = `wakefit-history.xls`;
+    anchor.download = reportFileName;
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
