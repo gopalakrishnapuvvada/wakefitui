@@ -821,6 +821,8 @@ function HistoryView() {
   const [models, setModels] = useState<WakefitModel[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [printingId, setPrintingId] = useState<number | null>(null);
   const [printMsg, setPrintMsg] = useState<{ id: number; ok: boolean; text: string } | null>(null);
 
@@ -885,6 +887,7 @@ function HistoryView() {
     if (search) {
       const q = search.toLowerCase();
       data = data.filter(r =>
+        r.scanId.toLowerCase().includes(q) ||
         r.partNumber.toLowerCase().includes(q) ||
         r.modelName.toLowerCase().includes(q) ||
         (r.operatorUsername || "").toLowerCase().includes(q));
@@ -895,6 +898,17 @@ function HistoryView() {
     });
     return data;
   }, [rows, search, sortCol, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
 
   const exportHistory = () => {
     const headers = ["Scan ID", "Part Number", "Model", "Timestamp", "Operator", "Readings"];
@@ -1043,8 +1057,8 @@ function HistoryView() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r, i) => (
-                  <tr key={r.id} className={`border-b border-[#e2e2e8] hover:bg-[#f9f9ff] transition-colors ${i === filtered.length - 1 ? "border-0" : ""}`}>
+                {pagedRows.map((r, i) => (
+                  <tr key={r.id} className={`border-b border-[#e2e2e8] hover:bg-[#f9f9ff] transition-colors ${i === pagedRows.length - 1 ? "border-0" : ""}`}>
                     <td className="px-5 py-3"><span className="font-mono text-xs font-semibold text-[#2b6485]">{r.scanId}</span></td>
                     <td className="px-5 py-3"><span className="font-mono text-xs font-semibold text-[#2b6485]">{r.partNumber}</span></td>
                     <td className="px-5 py-3 font-medium text-[#191c20]">{r.modelName}</td>
@@ -1075,13 +1089,52 @@ function HistoryView() {
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-[#44474e]">No approved records found for the selected period.</td></tr>
+                  <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-[#44474e]">No approved records found for the selected period.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         )}
       </Card>
+
+      {!loading && filtered.length > 0 && (
+        <Card className="px-5 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#44474e]">Rows per page</span>
+              <select
+                value={pageSize}
+                onChange={e => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2.5 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41]"
+              >
+                {[10, 20, 30, 50, 100].map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm font-medium text-[#031f41] hover:bg-[#f3f3f9] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-[#44474e]">Page {page} of {totalPages}</span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm font-medium text-[#031f41] hover:bg-[#f3f3f9] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
