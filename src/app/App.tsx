@@ -1188,9 +1188,20 @@ function getAvailableChannels(params: ParamFormState[], currentIndex: number): n
   return CHANNEL_OPTIONS.filter((channel) => !occupied.has(channel));
 }
 
-function getNextAvailableChannel(params: ParamFormState[]): number {
+function getNextAvailableChannel(params: ParamFormState[]): number | null {
   const used = new Set(params.map((param) => param.channel));
-  return CHANNEL_OPTIONS.find((channel) => !used.has(channel)) ?? 0;
+  return CHANNEL_OPTIONS.find((channel) => !used.has(channel)) ?? null;
+}
+
+function getChannelOptions(params: ParamFormState[], currentIndex: number): number[] {
+  const available = getAvailableChannels(params, currentIndex);
+  const current = params[currentIndex]?.channel;
+
+  if (Number.isInteger(current) && CHANNEL_OPTIONS.includes(current) && !available.includes(current)) {
+    return [current, ...available];
+  }
+
+  return available;
 }
 
 function ModelsView() {
@@ -1269,6 +1280,9 @@ function ModelsView() {
       setDeleteConfirm(null);
     }
   };
+
+  const nextAvailableChannel = getNextAvailableChannel(formParams);
+  const canAddParameter = nextAvailableChannel !== null;
 
   return (
     <div className="space-y-5">
@@ -1420,23 +1434,35 @@ function ModelsView() {
                     <span className="ml-1.5 text-xs font-normal text-[#44474e]">{formParams.filter(p => p.active).length} active · {formParams.filter(p => !p.active).length} disabled</span>
                   </label>
                   <button
-                    onClick={() => setFormParams((p) => [...p, { channel: getNextAvailableChannel(p), name: "", label: "", unit: "", min: 0, max: 100, active: true }])}
-                    className="flex items-center gap-1 text-xs text-[#2b6485] font-medium hover:underline">
+                    onClick={() => {
+                      setFormParams((prev) => {
+                        const nextChannel = getNextAvailableChannel(prev);
+                        if (nextChannel === null) return prev;
+
+                        return [...prev, { channel: nextChannel, name: "", label: "", unit: "", min: 0, max: 100, active: true }];
+                      });
+                    }}
+                    disabled={!canAddParameter}
+                    title={!canAddParameter ? "All channels (0-7) are already assigned" : undefined}
+                    className="flex items-center gap-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 text-[#2b6485] hover:underline">
                     <Plus className="w-3 h-3" /> Add Parameter
                   </button>
                 </div>
                 <div className="space-y-2.5">
-                  {formParams.map((p, i) => (
+                  {formParams.map((p, i) => {
+                    const channelOptions = getChannelOptions(formParams, i);
+
+                    return (
                     <div key={i} className={`rounded-lg border transition-all ${!p.active ? "border-[#e2e2e8] bg-[#f9f9ff] opacity-60" : "border-[#e2e2e8] bg-white"}`}>
                       <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-[#f3f3f9]">
                         <span className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide w-16 flex-shrink-0">Channel</span>
                         <select
-                          value={getAvailableChannels(formParams, i).includes(p.channel) ? p.channel : (getAvailableChannels(formParams, i)[0] ?? 0)}
+                          value={channelOptions.includes(p.channel) ? p.channel : (channelOptions[0] ?? 0)}
                           onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, channel: Number(e.target.value) } : x))}
                           disabled={!p.active}
                           className="w-16 px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9] font-mono"
                         >
-                          {getAvailableChannels(formParams, i).map((channel) => (
+                          {channelOptions.map((channel) => (
                             <option key={channel} value={channel}>{channel}</option>
                           ))}
                         </select>
@@ -1493,7 +1519,7 @@ function ModelsView() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
             </div>
@@ -1866,3 +1892,6 @@ export default function App() {
     </div>
   );
 }
+
+
+
