@@ -12,6 +12,13 @@ import {
   Shield, Eye, EyeOff, X, Check, ArrowUpDown, TrendingUp,
   Activity, RefreshCw, Loader2, WifiOff,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
 import * as api from "@/app/lib/api";
 import type {
   Role, OverallStatus, WakefitModel, ModelParameter, ScanRecord,
@@ -333,17 +340,19 @@ function DashboardView() {
               </h3>
               <p className="text-xs text-[#44474e]">OK scans only</p>
             </div>
-            <div className="relative">
-              <select
-                value={chartModel}
-                onChange={e => setChartModel(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-1.5 rounded-lg border border-[#e2e2e8] bg-white text-xs font-medium text-[#191c20] outline-none focus:border-[#031f41] transition-colors cursor-pointer"
-              >
-                <option value="all">All Models</option>
-                {models.map(m => <option key={m.partNumber} value={m.modelName}>{m.modelName}</option>)}
-              </select>
-              <ChevronDown className="w-3 h-3 text-[#44474e] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+            <Select value={chartModel} onValueChange={setChartModel}>
+              <SelectTrigger className="w-[180px] border-[#e2e2e8] bg-white text-xs font-medium text-[#191c20] focus-visible:border-[#031f41] focus-visible:ring-0">
+                <SelectValue placeholder="All Models" />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                <SelectItem value="all">All Models</SelectItem>
+                {models.map((model) => (
+                  <SelectItem key={model.partNumber} value={model.modelName}>
+                    {model.modelName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="overflow-x-auto">
             <div style={{ minWidth: `${Math.max(520, chartData.length * 60)}px`, height: 195 }}>
@@ -586,18 +595,19 @@ function ScanView({ session }: { session: Session }) {
             Simulate mode (no hardware)
           </label>
         </div>
-        <div className="relative max-w-sm">
-          <select
-            value={selectedPartNumber}
-            onChange={e => handleSelectModel(e.target.value)}
-            className="w-full appearance-none px-4 py-3 pr-10 rounded-lg border border-[#e2e2e8] bg-white text-sm font-medium text-[#191c20] outline-none focus:border-[#031f41] transition-colors cursor-pointer"
-          >
-            <option value="">— Choose a model —</option>
-            {activeModels.map((model) => (
-              <option key={model.partNumber} value={model.partNumber}>{model.modelName} ({model.category})</option>
-            ))}
-          </select>
-          <ChevronDown className="w-4 h-4 text-[#44474e] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="max-w-sm">
+          <Select value={selectedPartNumber} onValueChange={handleSelectModel}>
+            <SelectTrigger className="w-full border-[#e2e2e8] bg-white px-4 py-3 text-sm font-medium text-[#191c20] focus-visible:border-[#031f41] focus-visible:ring-0 data-[size=default]:h-auto">
+              <SelectValue placeholder="— Choose a model —" />
+            </SelectTrigger>
+            <SelectContent className="max-h-64">
+              {activeModels.map((model) => (
+                <SelectItem key={model.partNumber} value={model.partNumber}>
+                  {model.modelName} ({model.category})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {selectedModel && (
           <p className="mt-2 text-xs text-[#44474e]">
@@ -1028,11 +1038,19 @@ function HistoryView() {
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search part number, model, operator…"
               className="w-full pl-8 pr-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors" />
           </div>
-          <select value={filterModel} onChange={e => setFilterModel(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] text-[#191c20] cursor-pointer">
-            <option value="all">All Models</option>
-            {models.map(m => <option key={m.partNumber} value={m.modelName}>{m.modelName}</option>)}
-          </select>
+          <Select value={filterModel} onValueChange={setFilterModel}>
+            <SelectTrigger className="w-[220px] border-[#e2e2e8] bg-white text-sm text-[#191c20] focus-visible:border-[#031f41] focus-visible:ring-0">
+              <SelectValue placeholder="All Models" />
+            </SelectTrigger>
+            <SelectContent className="max-h-64">
+              <SelectItem value="all">All Models</SelectItem>
+              {models.map((model) => (
+                <SelectItem key={model.partNumber} value={model.modelName}>
+                  {model.modelName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="flex items-center gap-2">
             <label className="text-xs text-[#44474e]">From</label>
             <input
