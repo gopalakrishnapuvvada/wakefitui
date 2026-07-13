@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { QRCodeSVG } from "qrcode.react";
 import {
   LayoutDashboard, ScanLine, ClipboardList, Package, Users,
   ChevronDown, Search, Plus, Edit2, Trash2, CheckCircle2, XCircle,
@@ -593,9 +594,6 @@ function ScanView({ session }: { session: Session }) {
       status: "OK",
     });
   }, [record, selectedModel, labelScanId]);
-  const labelQrUrl = labelQrData
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(labelQrData)}`
-    : "";
 
   return (
     <div className="max-w-5xl space-y-5">
@@ -840,16 +838,12 @@ function ScanView({ session }: { session: Session }) {
                   <div><span className="font-semibold text-[#191c20]">Timestamp:</span> {record ? fmtTime(record.timestamp) : "—"}</div>
                   <div><span className="font-semibold text-[#191c20]">Status:</span> <span className="text-emerald-700 font-semibold">✓ OK</span></div>
                 </div>
-                {labelQrUrl && (
+                {labelQrData && (
                   <div className="pt-2 border-t border-[#e2e2e8]">
                     <p className="text-xs font-semibold text-[#44474e] uppercase tracking-wide mb-2">QR Code</p>
-                    <img
-                      src={labelQrUrl}
-                      alt="Label QR code"
-                      width={140}
-                      height={140}
-                      className="rounded border border-[#e2e2e8] bg-white p-1"
-                    />
+                    <div className="inline-block rounded border border-[#e2e2e8] bg-white p-1">
+                      <QRCodeSVG value={labelQrData} size={140} />
+                    </div>
                   </div>
                 )}
               </div>
