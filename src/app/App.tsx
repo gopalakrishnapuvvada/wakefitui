@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
 import wakefitLogo from "@/imports/wakefitLogo.jfif";
 import {
@@ -300,6 +300,7 @@ function DashboardView() {
   const [chartModel, setChartModel] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const chartScrollRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -327,6 +328,17 @@ function DashboardView() {
 
     return () => window.clearInterval(intervalId);
   }, [load]);
+
+  useEffect(() => {
+    const container = chartScrollRef.current;
+    if (!container) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      container.scrollLeft = container.scrollWidth;
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [chartData]);
 
   if (loading) {
     return <div className="flex items-center justify-center py-24"><Spinner className="w-8 h-8" /></div>;
@@ -365,7 +377,7 @@ function DashboardView() {
               </SelectContent>
             </Select>
           </div>
-          <div className="overflow-x-auto">
+          <div ref={chartScrollRef} className="overflow-x-auto">
             <div style={{ minWidth: `${Math.max(520, chartData.length * 60)}px`, height: 195 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} barGap={4} barCategoryGap="35%">
