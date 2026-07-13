@@ -1546,15 +1546,23 @@ function ModelsView() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#191c20] mb-1.5">Model Name <span className="text-[#E63946]">*</span></label>
+                  <label className="block text-sm font-medium text-[#191c20] mb-1.5">
+                    Model Name <span className="text-[#E63946]">*</span>
+                    <span className="ml-1.5 text-xs font-normal text-[#44474e]">Cannot be changed after creation</span>
+                  </label>
                   <input value={form.modelName} maxLength={MAX_TEXT_LENGTH} onChange={e => setForm(f => ({ ...f, modelName: e.target.value.slice(0, MAX_TEXT_LENGTH) }))}
-                    className="w-full px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors"
+                    disabled={!!editingPartNumber}
+                    className="w-full px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
                     placeholder="e.g. Chair Model X" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#191c20] mb-1.5">Category</label>
+                  <label className="block text-sm font-medium text-[#191c20] mb-1.5">
+                    Category
+                    <span className="ml-1.5 text-xs font-normal text-[#44474e]">Cannot be changed after creation</span>
+                  </label>
                   <input value={form.category} maxLength={MAX_TEXT_LENGTH} onChange={e => setForm(f => ({ ...f, category: e.target.value.slice(0, MAX_TEXT_LENGTH) }))}
-                    className="w-full px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors"
+                    disabled={!!editingPartNumber}
+                    className="w-full px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
                     placeholder="e.g. Office Chair" />
                 </div>
               </div>
