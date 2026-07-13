@@ -289,6 +289,8 @@ function Header({ title, sub, session }: { title: string; sub?: string; session:
 
 // ─── Dashboard View ───────────────────────────────────────────────────────────
 
+const DASHBOARD_AUTO_REFRESH_MS = 0.1 * 60 * 1000;
+
 function DashboardView() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [chartData, setChartData] = useState<ApprovedScansPoint[]>([]);
@@ -316,6 +318,14 @@ function DashboardView() {
   }, [chartModel]);
 
   useEffect(() => { setLoading(true); load(); }, [load]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      load();
+    }, DASHBOARD_AUTO_REFRESH_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [load]);
 
   if (loading) {
     return <div className="flex items-center justify-center py-24"><Spinner className="w-8 h-8" /></div>;
