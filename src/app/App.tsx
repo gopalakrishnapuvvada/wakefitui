@@ -582,6 +582,20 @@ function ScanView({ session }: { session: Session }) {
   const overallStatus = scanState === "done" ? record?.overallStatus ?? null : null;
   const labelPrinted = printResult?.printed === true;
   const labelScanId = saveResult?.scanId || record?.scanId || "";
+  const labelQrData = useMemo(() => {
+    if (!record || !selectedModel || !labelScanId) return "";
+
+    return JSON.stringify({
+      scanId: labelScanId,
+      partNumber: selectedModel.partNumber,
+      modelName: selectedModel.modelName,
+      timestamp: record.timestamp,
+      status: "OK",
+    });
+  }, [record, selectedModel, labelScanId]);
+  const labelQrUrl = labelQrData
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(labelQrData)}`
+    : "";
 
   return (
     <div className="max-w-5xl space-y-5">
@@ -826,6 +840,18 @@ function ScanView({ session }: { session: Session }) {
                   <div><span className="font-semibold text-[#191c20]">Timestamp:</span> {record ? fmtTime(record.timestamp) : "—"}</div>
                   <div><span className="font-semibold text-[#191c20]">Status:</span> <span className="text-emerald-700 font-semibold">✓ OK</span></div>
                 </div>
+                {labelQrUrl && (
+                  <div className="pt-2 border-t border-[#e2e2e8]">
+                    <p className="text-xs font-semibold text-[#44474e] uppercase tracking-wide mb-2">QR Code</p>
+                    <img
+                      src={labelQrUrl}
+                      alt="Label QR code"
+                      width={140}
+                      height={140}
+                      className="rounded border border-[#e2e2e8] bg-white p-1"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-4 flex-wrap">
@@ -1909,7 +1935,7 @@ function LoginView({ onLogin }: { onLogin: (s: Session) => void }) {
       const res = await api.login(username.trim().toLowerCase(), password);
       onLogin({ username: res.username, role: res.role, lastActive: res.lastActive });
     } catch (err: any) {
-      setError(err instanceof api.ApiError ? err.message : "Could not reach the Wakefit backend. Check the API_BASE setting and that Node-RED is running.");
+      setError(err instanceof api.ApiError ? err.message : "Backend Unreachable...");
     } finally {
       setLoading(false);
     }
