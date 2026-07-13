@@ -637,7 +637,7 @@ function ScanView({ session }: { session: Session }) {
             <SelectContent className="max-h-64">
               {activeModels.map((model) => (
                 <SelectItem key={model.partNumber} value={model.partNumber}>
-                  {model.modelName} ({model.category})
+                  {model.modelName} ({model.category || "uncategorized"})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -908,6 +908,7 @@ function HistoryView() {
   const [pageSize, setPageSize] = useState(10);
   const [printingId, setPrintingId] = useState<number | null>(null);
   const [printMsg, setPrintMsg] = useState<{ id: number; ok: boolean; text: string } | null>(null);
+  const didLoadHistoryOnMount = useRef(false);
 
   const handleReprint = async (row: HistoryRow) => {
     setPrintingId(row.id);
@@ -958,6 +959,13 @@ function HistoryView() {
   useEffect(() => {
     void loadModels();
   }, [loadModels]);
+
+  useEffect(() => {
+    if (didLoadHistoryOnMount.current) return;
+
+    didLoadHistoryOnMount.current = true;
+    void loadHistory();
+  }, [loadHistory]);
 
   const chartData = useMemo(() => {
     const byDay: Record<string, number> = {};
