@@ -499,7 +499,7 @@ function ScanView({ session }: { session: Session }) {
   const [models, setModels] = useState<WakefitModel[]>([]);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [selectedPartNumber, setSelectedPartNumber] = useState<string>("");
-  const [simulate, setSimulate] = useState(true);
+  const simulate = false;
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [record, setRecord] = useState<ScanRecord | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
