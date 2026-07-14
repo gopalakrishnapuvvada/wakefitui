@@ -621,7 +621,7 @@ function ScanView({ session }: { session: Session }) {
             <div className="w-6 h-6 rounded-full bg-[#031f41] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</div>
             <h2 className="font-semibold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 17 }}>Select Product Model</h2>
           </div>
-          <label className="flex items-center gap-2 text-xs text-[#44474e] cursor-pointer select-none">
+          {/* <label className="flex items-center gap-2 text-xs text-[#44474e] cursor-pointer select-none">
             <button
               type="button"
               onClick={() => setSimulate(s => !s)}
@@ -630,7 +630,7 @@ function ScanView({ session }: { session: Session }) {
               <div className={`w-4 h-4 rounded-full bg-white shadow transform transition-transform mx-0.5 ${simulate ? "translate-x-4" : "translate-x-0"}`} />
             </button>
             Simulate mode (no hardware)
-          </label>
+          </label> */}
         </div>
         <div className="max-w-sm">
           <Select value={selectedPartNumber} onValueChange={handleSelectModel}>
