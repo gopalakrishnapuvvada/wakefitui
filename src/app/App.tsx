@@ -195,7 +195,10 @@ function Sidebar({ view, setView, session, onLogout }: {
   return (
     <aside className="w-60 flex-shrink-0 bg-[#031f41] flex flex-col h-full">
       <div className="h-16 flex items-center px-4 border-b border-white/10">
-        <ImageWithFallback src={wakefitLogo} alt="Wakefit logo" className="h-9 w-auto object-contain" />
+        <div className="flex items-center gap-3">
+          <ImageWithFallback src={wakefitLogo} alt="Wakefit logo" className="h-9 w-auto object-contain" />
+          <span className="text-white text-lg font-semibold tracking-wide">QC System</span>
+        </div>
       </div>
 
       <nav className="flex-1 py-4 px-3 space-y-0.5">
@@ -1125,7 +1128,7 @@ function HistoryView() {
             </button>
           )}
           <button onClick={loadHistory} className="flex items-center gap-1 text-xs text-[#2b6485] font-medium hover:underline">
-            <RefreshCw className="w-3 h-3" /> View
+             View
           </button>
           <button onClick={exportHistory} className="flex items-center gap-1 text-xs text-[#2b6485] font-medium hover:underline">
             Export
