@@ -911,7 +911,7 @@ function HistoryView() {
   const [pageSize, setPageSize] = useState(10);
   const [printingId, setPrintingId] = useState<number | null>(null);
   const [printMsg, setPrintMsg] = useState<{ id: number; ok: boolean; text: string } | null>(null);
-  const didLoadHistoryOnMount = useRef(false);
+  const hasValidDateRange = Boolean(startDate && endDate && startDate <= endDate);
 
   const handleReprint = async (row: HistoryRow) => {
     setPrintingId(row.id);
@@ -962,13 +962,6 @@ function HistoryView() {
   useEffect(() => {
     void loadModels();
   }, [loadModels]);
-
-  useEffect(() => {
-    if (didLoadHistoryOnMount.current) return;
-
-    didLoadHistoryOnMount.current = true;
-    void loadHistory();
-  }, [loadHistory]);
 
   const chartData = useMemo(() => {
     const byDay: Record<string, number> = {};
@@ -1127,10 +1120,10 @@ function HistoryView() {
               Clear dates
             </button>
           )}
-          <button onClick={loadHistory} className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-[#e2e2e8] text-base text-[#2b6485] font-semibold hover:bg-[#f3f3f9] transition-colors">
+          <button onClick={loadHistory} disabled={!hasValidDateRange} className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-[#e2e2e8] text-base text-[#2b6485] font-semibold hover:bg-[#f3f3f9] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
              View
           </button>
-          <button onClick={exportHistory} className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-[#e2e2e8] text-base text-[#2b6485] font-semibold hover:bg-[#f3f3f9] transition-colors">
+          <button onClick={exportHistory} disabled={!hasValidDateRange} className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-[#e2e2e8] text-base text-[#2b6485] font-semibold hover:bg-[#f3f3f9] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
             Export
           </button>
           <span className="text-xs text-[#44474e] ml-auto">{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>
