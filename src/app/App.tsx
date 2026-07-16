@@ -78,6 +78,22 @@ function fmtTime(iso: string | null | undefined): string {
   return d.toLocaleString();
 }
 
+function fmtTimeIST(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(d);
+}
+
 function fmtDateDDMMYYYY(value: string | null | undefined): string {
   if (!value) return "—";
   const d = new Date(value);
@@ -605,7 +621,7 @@ function ScanView({ session }: { session: Session }) {
       scanId: labelScanId,
       partNumber: selectedModel.partNumber,
       modelName: selectedModel.modelName,
-      timestamp: record.timestamp,
+      timestamp: fmtTimeIST(record.timestamp),
       status: "OK",
     });
   }, [record, selectedModel, labelScanId]);
@@ -621,7 +637,8 @@ function ScanView({ session }: { session: Session }) {
             <div className="w-6 h-6 rounded-full bg-[#031f41] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</div>
             <h2 className="font-semibold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 17 }}>Select Product Model</h2>
           </div>
-          {/* <label className="flex items-center gap-2 text-xs text-[#44474e] cursor-pointer select-none">
+          {/*
+          <label className="flex items-center gap-2 text-xs text-[#44474e] cursor-pointer select-none">
             <button
               type="button"
               onClick={() => setSimulate(s => !s)}
@@ -630,7 +647,8 @@ function ScanView({ session }: { session: Session }) {
               <div className={`w-4 h-4 rounded-full bg-white shadow transform transition-transform mx-0.5 ${simulate ? "translate-x-4" : "translate-x-0"}`} />
             </button>
             Simulate mode (no hardware)
-          </label> */}
+          </label>
+          */}
         </div>
         <div className="max-w-sm">
           <Select value={selectedPartNumber} onValueChange={handleSelectModel}>
@@ -770,9 +788,12 @@ function ScanView({ session }: { session: Session }) {
           {scanState === "idle" && (
             <div className="mt-5 pt-4 border-t border-[#e2e2e8] flex items-center gap-2 text-xs text-[#44474e]">
               <ScanLine className="w-3.5 h-3.5" />
+              {/*
               {simulate
                 ? <>Simulate mode is on — press <strong className="text-[#191c20] mx-1">Scan Product</strong> to generate a fake reading instantly.</>
                 : <>Place the product on the measurement station and press <strong className="text-[#191c20] mx-1">Scan Product</strong> to read the IO-Link sensors.</>}
+              */}
+              Place the product on the measurement station and press <strong className="text-[#191c20] mx-1">Scan Product</strong> to read the IO-Link sensors.
             </div>
           )}
         </Card>
@@ -850,7 +871,7 @@ function ScanView({ session }: { session: Session }) {
                 <div className="grid gap-2 text-sm text-[#44474e] sm:grid-cols-2">
                   <div><span className="font-semibold text-[#191c20]">Scan ID:</span> {labelScanId || "—"}</div>
                   <div><span className="font-semibold text-[#191c20]">Model:</span> {selectedModel?.modelName || "—"}</div>
-                  <div><span className="font-semibold text-[#191c20]">Timestamp:</span> {record ? fmtTime(record.timestamp) : "—"}</div>
+                  <div><span className="font-semibold text-[#191c20]">Timestamp:</span> {record ? fmtTimeIST(record.timestamp) : "—"}</div>
                   <div><span className="font-semibold text-[#191c20]">Status:</span> <span className="text-emerald-700 font-semibold">✓ OK</span></div>
                 </div>
                 {labelQrData && (
