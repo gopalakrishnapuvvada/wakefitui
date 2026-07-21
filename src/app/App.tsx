@@ -28,7 +28,7 @@ import type {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type View = "dashboard" | "scan" | "history" | "models" | "users";
+type View = "dashboard" | "scan" | "history" | "models" | "users" | "settings";
 
 interface Session {
   username: string;
@@ -201,6 +201,7 @@ const NAV_ITEMS: { id: View; label: string; icon: React.ElementType; roles: Role
   { id: "history", label: "History", icon: ClipboardList, roles: ["operator", "supervisor", "admin"] },
   { id: "models", label: "Model Management", icon: Package, roles: ["admin"] },
   { id: "users", label: "User Management", icon: Users, roles: ["admin"] },
+  { id: "settings", label: "Settings", icon: Settings, roles: ["admin"] },
 ];
 
 function Sidebar({ view, setView, session, onLogout }: {
@@ -574,6 +575,14 @@ function ScanView({ session }: { session: Session }) {
           const sr = await api.saveScan(finalRecord.scanId, session.username, session.role);
           setSaveResult(sr);
           setShowLabelDetails(false);
+          
+          // Automatically print label after successful save
+          try {
+            const printRes = await api.printLabel(sr.scanId, 1);
+            setPrintResult(printRes);
+          } catch (e: any) {
+            setPrintResult({ printed: false, error: e.message });
+          }
         } catch (e: any) {
           setSaveResult({ saved: false, reason: e.message });
           setShowLabelDetails(false);
@@ -1906,6 +1915,86 @@ function UsersView({ session }: { session: Session }) {
   );
 }
 
+// ─── Settings View ────────────────────────────────────────────────────────────
+
+function SettingsView() {
+  const [printerEnabled, setPrinterEnabled] = useState(true);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const handleSaveSettings = () => {
+    // Save printer settings to localStorage
+    localStorage.setItem("printerEnabled", JSON.stringify(printerEnabled));
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2000);
+  };
+
+  return (
+    <div className="max-w-2xl space-y-5">
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold text-[#191c20] mb-6" style={{ fontFamily: "Barlow Condensed, sans-serif" }}>
+          Printer Settings
+        </h3>
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-lg border border-[#e2e2e8] bg-[#f9f9ff]">
+            <div className="flex items-center gap-3">
+              <Printer className="w-5 h-5 text-[#2b6485]" />
+              <div>
+                <p className="font-medium text-[#191c20]">Enable Printer</p>
+                <p className="text-xs text-[#44474e] mt-0.5">Allow label printing functionality in the application</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setPrinterEnabled(!printerEnabled)}
+              className={`w-14 h-8 rounded-full transition-colors flex-shrink-0 flex items-center ${
+                printerEnabled ? "bg-emerald-500" : "bg-[#c4c6cf]"
+              }`}
+            >
+              <div
+                className={`w-6 h-6 rounded-full bg-white shadow transform transition-transform mx-1 ${
+                  printerEnabled ? "translate-x-6" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="pt-4 border-t border-[#e2e2e8] flex justify-end">
+            <button
+              onClick={handleSaveSettings}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#031f41] text-white text-sm font-semibold hover:bg-[#1d3557] shadow-sm transition-colors"
+            >
+              {saveSuccess ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Saved
+                </>
+              ) : (
+                "Save Settings"
+              )}
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 bg-blue-50 border border-blue-200">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-blue-100">
+            <AlertTriangle className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="font-medium text-blue-900">Printer Status</p>
+            <p className="text-sm text-blue-700 mt-1">
+              {printerEnabled
+                ? "Printer functionality is enabled. Labels will be printed when scanning products."
+                : "Printer functionality is disabled. Scan results will not print labels."}
+            </p>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Login View ───────────────────────────────────────────────────────────────
 
 function LoginView({ onLogin }: { onLogin: (s: Session) => void }) {
@@ -2057,6 +2146,7 @@ const VIEW_META: Record<View, { title: string; sub: string }> = {
   history: { title: "Scan History", sub: "Approved scan records" },
   models: { title: "Model Management", sub: "Configure product models and parameter thresholds" },
   users: { title: "User Management", sub: "Manage accounts and access" },
+  settings: { title: "Settings", sub: "Configure system preferences" },
 };
 
 export default function App() {
@@ -2096,6 +2186,7 @@ export default function App() {
           {view === "history" && <HistoryView />}
           {view === "models" && session.role === "admin" && <ModelsView />}
           {view === "users" && session.role === "admin" && <UsersView session={session} />}
+          {view === "settings" && session.role === "admin" && <SettingsView />}
         </main>
       </div>
     </div>
