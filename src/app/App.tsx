@@ -923,7 +923,7 @@ function ScanView({ session }: { session: Session }) {
                   {printing ? <Spinner className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
                   {printing ? "Printing…" : "Print Label"}
                 </button>
-                {printResult?.printed && (
+                {printResult?.printed && printerEnabled && (
                   <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Label sent to printer
                   </div>
