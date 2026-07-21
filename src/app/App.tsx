@@ -525,11 +525,34 @@ function ScanView({ session }: { session: Session }) {
   const [printing, setPrinting] = useState(false);
   const [printResult, setPrintResult] = useState<{ printed: boolean; error?: string } | null>(null);
   const [showLabelDetails, setShowLabelDetails] = useState(false);
+  const [printerEnabled, setPrinterEnabled] = useState(true);
 
   useEffect(() => {
     api.getModels()
       .then(setModels)
       .catch(e => setModelsError(e.message || "Failed to load models"));
+    
+    // Load printer enabled state from localStorage
+    const stored = localStorage.getItem("printerEnabled");
+    setPrinterEnabled(stored ? JSON.parse(stored) : true);
+    
+    // Listen for printer setting changes from SettingsView
+    const handlePrinterSettingsChange = (event: any) => {
+      setPrinterEnabled(event.detail.printerEnabled);
+    };
+    window.addEventListener("printerSettingsChanged", handlePrinterSettingsChange);
+    
+    // Also listen for storage events (for other tabs)
+    const handleStorageChange = () => {
+      const updated = localStorage.getItem("printerEnabled");
+      setPrinterEnabled(updated ? JSON.parse(updated) : true);
+    };
+    window.addEventListener("storage", handleStorageChange);
+    
+    return () => {
+      window.removeEventListener("printerSettingsChanged", handlePrinterSettingsChange);
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, []);
 
   const activeModels = models.filter((model) => model.active);
@@ -576,12 +599,17 @@ function ScanView({ session }: { session: Session }) {
           setSaveResult(sr);
           setShowLabelDetails(false);
           
-          // Automatically print label after successful save
-          try {
-            const printRes = await api.printLabel(sr.scanId, 1);
-            setPrintResult(printRes);
-          } catch (e: any) {
-            setPrintResult({ printed: false, error: e.message });
+          // Automatically print label after successful save (only if printer enabled)
+          if (printerEnabled) {
+            try {
+              const printRes = await api.printLabel(sr.scanId, 1);
+              setPrintResult(printRes);
+            } catch (e: any) {
+              setPrintResult({ printed: false, error: e.message });
+            }
+          } else {
+            // Printer disabled: mark as ready for next scan (no print needed)
+            setPrintResult({ printed: true });
           }
         } catch (e: any) {
           setSaveResult({ saved: false, reason: e.message });
@@ -889,8 +917,9 @@ function ScanView({ session }: { session: Session }) {
               </div>
 
               <div className="flex items-center gap-4 flex-wrap">
-                <button onClick={handlePrint} disabled={printing || saving}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#031f41] text-white text-sm font-semibold hover:bg-[#1d3557] shadow-sm transition-colors disabled:opacity-50">
+                <button onClick={handlePrint} disabled={printing || saving || !printerEnabled}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#031f41] text-white text-sm font-semibold hover:bg-[#1d3557] shadow-sm transition-colors disabled:opacity-50"
+                  title={!printerEnabled ? "Printer is disabled in settings" : ""}>
                   {printing ? <Spinner className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
                   {printing ? "Printing…" : "Print Label"}
                 </button>
@@ -936,6 +965,7 @@ function HistoryView() {
   const [pageSize, setPageSize] = useState(10);
   const [printingId, setPrintingId] = useState<number | null>(null);
   const [printMsg, setPrintMsg] = useState<{ id: number; ok: boolean; text: string } | null>(null);
+  const [printerEnabled, setPrinterEnabled] = useState(true);
   const hasValidDateRange = Boolean(startDate && endDate && startDate <= endDate);
 
   const handleReprint = async (row: HistoryRow) => {
@@ -987,6 +1017,30 @@ function HistoryView() {
   useEffect(() => {
     void loadModels();
   }, [loadModels]);
+
+  useEffect(() => {
+    // Load printer enabled state from localStorage
+    const stored = localStorage.getItem("printerEnabled");
+    setPrinterEnabled(stored ? JSON.parse(stored) : true);
+    
+    // Listen for printer setting changes from SettingsView
+    const handlePrinterSettingsChange = (event: any) => {
+      setPrinterEnabled(event.detail.printerEnabled);
+    };
+    window.addEventListener("printerSettingsChanged", handlePrinterSettingsChange);
+    
+    // Also listen for storage events (for other tabs)
+    const handleStorageChange = () => {
+      const updated = localStorage.getItem("printerEnabled");
+      setPrinterEnabled(updated ? JSON.parse(updated) : true);
+    };
+    window.addEventListener("storage", handleStorageChange);
+    
+    return () => {
+      window.removeEventListener("printerSettingsChanged", handlePrinterSettingsChange);
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
 
   const chartData = useMemo(() => {
     const byDay: Record<string, number> = {};
@@ -1205,8 +1259,9 @@ function HistoryView() {
                     <td className="px-5 py-3 text-[#44474e]">{r.operatorUsername || "—"}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => handleReprint(r)} disabled={printingId === r.id}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#e2e2e8] text-xs font-medium text-[#031f41] hover:bg-[#f3f3f9] transition-colors disabled:opacity-50">
+                        <button onClick={() => handleReprint(r)} disabled={printingId === r.id || !printerEnabled}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#e2e2e8] text-xs font-medium text-[#031f41] hover:bg-[#f3f3f9] transition-colors disabled:opacity-50"
+                          title={!printerEnabled ? "Printer is disabled in settings" : ""}>
                           {printingId === r.id ? <Spinner className="w-3 h-3" /> : <Printer className="w-3 h-3" />}
                           Reprint
                         </button>
@@ -1921,9 +1976,25 @@ function SettingsView() {
   const [printerEnabled, setPrinterEnabled] = useState(true);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Load initial state from localStorage and listen for changes
+  useEffect(() => {
+    const stored = localStorage.getItem("printerEnabled");
+    setPrinterEnabled(stored ? JSON.parse(stored) : true);
+    
+    // Listen for printer setting changes from other views
+    const handlePrinterSettingsChange = (event: any) => {
+      setPrinterEnabled(event.detail.printerEnabled);
+    };
+    window.addEventListener("printerSettingsChanged", handlePrinterSettingsChange);
+    
+    return () => window.removeEventListener("printerSettingsChanged", handlePrinterSettingsChange);
+  }, []);
+
   const handleSaveSettings = () => {
     // Save printer settings to localStorage
     localStorage.setItem("printerEnabled", JSON.stringify(printerEnabled));
+    // Dispatch custom event to sync other components on the same page
+    window.dispatchEvent(new CustomEvent("printerSettingsChanged", { detail: { printerEnabled } }));
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2000);
   };
