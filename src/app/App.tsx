@@ -516,7 +516,7 @@ function ScanView({ session }: { session: Session }) {
   const [models, setModels] = useState<WakefitModel[]>([]);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [selectedPartNumber, setSelectedPartNumber] = useState<string>("");
-  const [simulate, setSimulate] = useState(false);
+  // const [simulate, setSimulate] = useState(false);
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [record, setRecord] = useState<ScanRecord | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -575,7 +575,8 @@ function ScanView({ session }: { session: Session }) {
     setSaveResult(null);
     setPrintResult(null);
     try {
-      const res = await api.startScan(selectedModel.partNumber, simulate);
+      // const res = await api.startScan(selectedModel.partNumber, simulate);
+      const res = await api.startScan(selectedModel.partNumber, false);
       let finalRecord: ScanRecord;
       if ("results" in res) {
         // simulate:true — already finished
@@ -674,6 +675,7 @@ function ScanView({ session }: { session: Session }) {
             <div className="w-6 h-6 rounded-full bg-[#031f41] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</div>
             <h2 className="font-semibold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 17 }}>Select Product Model</h2>
           </div>
+          {/* Simulate mode toggle - disabled
           <label className="flex items-center gap-2 text-xs text-[#44474e] cursor-pointer select-none">
             <button
               type="button"
@@ -684,6 +686,7 @@ function ScanView({ session }: { session: Session }) {
             </button>
             Simulate mode (no hardware)
           </label>
+          */}
         </div>
         <div className="max-w-sm">
           <Select value={selectedPartNumber} onValueChange={handleSelectModel}>
@@ -823,9 +826,9 @@ function ScanView({ session }: { session: Session }) {
           {scanState === "idle" && (
             <div className="mt-5 pt-4 border-t border-[#e2e2e8] flex items-center gap-2 text-xs text-[#44474e]">
               <ScanLine className="w-3.5 h-3.5" />
-              {simulate
+              {/* {simulate
                 ? <>Simulate mode is on — press <strong className="text-[#191c20] mx-1">Scan Product</strong> to generate a fake reading instantly.</>
-                : <>Place the product on the measurement station and press <strong className="text-[#191c20] mx-1">Scan Product</strong> to read the IO-Link sensors.</>}
+                : */}Place the product on the measurement station and press <strong className="text-[#191c20] mx-1">Scan Product</strong> to read the IO-Link sensors.{/* } */}
             </div>
           )}
         </Card>
