@@ -865,7 +865,7 @@ function ScanView({ session }: { session: Session }) {
               </div>
               {overallStatus === "OK" && (
                 <div className="mt-3 text-xs">
-                  {saving && <span className="flex items-center gap-1.5 text-[#44474e]"><Spinner className="w-3.5 h-3.5" /> Saving to history…</span>}
+                  {/* {saving && <span className="flex items-center gap-1.5 text-[#44474e]"><Spinner className="w-3.5 h-3.5" /> Saving to history…</span>} */}
                   {saveResult && saveResult.saved && <span className="flex items-center gap-1.5 text-emerald-700 font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> Saved to history</span>}
                   {saveResult && !saveResult.saved && <span className="flex items-center gap-1.5 text-amber-700 font-medium"><AlertTriangle className="w-3.5 h-3.5" /> {saveResult.reason || "Not saved"}</span>}
                 </div>
