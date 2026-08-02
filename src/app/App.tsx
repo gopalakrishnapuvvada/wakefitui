@@ -1399,6 +1399,10 @@ function clampNumericValue(value: number): number {
   return Math.min(MAX_NUMERIC_VALUE, Math.max(MIN_NUMERIC_VALUE, value));
 }
 
+function createEmptyParam(): ParamFormState {
+  return { channel: 0, name: "", label: "", unit: "", referenceValue: null, min: 0, max: 100, active: true };
+}
+
 function ModelsView() {
   const [models, setModels] = useState<WakefitModel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1409,9 +1413,7 @@ function ModelsView() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<ModelFormState>({ partNumber: "", modelName: "", category: "", active: true });
-  const [formParams, setFormParams] = useState<ParamFormState[]>([
-    { channel: 0, name: "", label: "", unit: "", min: 0, max: 100, active: true },
-  ]);
+  const [formParams, setFormParams] = useState<ParamFormState[]>([createEmptyParam()]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -1429,7 +1431,7 @@ function ModelsView() {
   const openAdd = () => {
     setEditingPartNumber(null);
     setForm({ partNumber: "", modelName: "", category: "", active: true });
-    setFormParams([{ channel: 0, name: "", label: "", unit: "", min: 0, max: 100, active: true }]);
+    setFormParams([createEmptyParam()]);
     setSaveError(null);
     setShowModal(true);
   };
@@ -1437,7 +1439,7 @@ function ModelsView() {
   const openEdit = async (m: WakefitModel) => {
     setEditingPartNumber(m.partNumber);
     setForm({ partNumber: m.partNumber, modelName: m.modelName, category: m.category, active: m.active });
-    setFormParams(m.parameters.length ? m.parameters : [{ channel: 0, name: "", label: "", unit: "", min: 0, max: 100, active: true }]);
+    setFormParams(m.parameters.length ? m.parameters : [createEmptyParam()]);
     setSaveError(null);
     setShowModal(true);
   };
@@ -1539,6 +1541,7 @@ function ModelsView() {
         name: param.name.trim(),
         label: param.label.trim(),
         unit: param.unit.trim(),
+        referenceValue: param.referenceValue ?? null,
       })),
     };
 
@@ -1739,7 +1742,7 @@ function ModelsView() {
                         const nextChannel = getNextAvailableChannel(prev);
                         if (nextChannel === null) return prev;
 
-                        return [...prev, { channel: nextChannel, name: "", label: "", unit: "", min: 0, max: 100, active: true }];
+                        return [...prev, { ...createEmptyParam(), channel: nextChannel }];
                       });
                     }}
                     disabled={!canAddParameter}
@@ -1754,39 +1757,53 @@ function ModelsView() {
 
                     return (
                     <div key={i} className={`rounded-lg border transition-all ${!p.active ? "border-[#e2e2e8] bg-[#f9f9ff] opacity-60" : "border-[#e2e2e8] bg-white"}`}>
-                      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-[#f3f3f9]">
-                        <span className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide w-16 flex-shrink-0">Channel <span className="text-[#E63946]">*</span></span>
-                        <select
-                          value={channelOptions.includes(p.channel) ? p.channel : (channelOptions[0] ?? 0)}
-                          onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, channel: Number(e.target.value) } : x))}
-                          disabled={!p.active}
-                          className="w-16 px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9] font-mono"
-                        >
-                          {channelOptions.map((channel) => (
-                            <option key={channel} value={channel}>{channel}</option>
-                          ))}
-                        </select>
-                        <span className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide w-12 flex-shrink-0 ml-2">Label <span className="text-[#E63946]">*</span></span>
-                        <input value={p.label} maxLength={MAX_TEXT_LENGTH}
-                          onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, label: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
-                          disabled={!p.active}
-                          className="flex-1 px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
-                          placeholder="e.g. Left Handle" />
-                        <button
-                          onClick={() => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, active: !x.active } : x))}
-                          className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-semibold border transition-colors ${
-                            !p.active ? "bg-[#f3f3f9] text-[#44474e] border-[#e2e2e8] hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                          }`}>
-                          {!p.active ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                          {!p.active ? "Inactive" : "Active"}
-                        </button>
-                        <button onClick={() => setFormParams(fp => fp.filter((_, j) => j !== i))} disabled={formParams.length === 1}
-                          className="p-1 rounded hover:bg-red-50 text-[#E63946] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                      <div className="px-3 pt-2.5 pb-2 border-b border-[#f3f3f9]">
+                        <div className="flex items-end gap-2">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Channel <span className="text-[#E63946]">*</span></span>
+                            <select
+                              value={channelOptions.includes(p.channel) ? p.channel : (channelOptions[0] ?? 0)}
+                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, channel: Number(e.target.value) } : x))}
+                              disabled={!p.active}
+                              className="w-16 px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9] font-mono"
+                            >
+                              {channelOptions.map((channel) => (
+                                <option key={channel} value={channel}>{channel}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Label <span className="text-[#E63946]">*</span></p>
+                            <input value={p.label} maxLength={MAX_TEXT_LENGTH}
+                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, label: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
+                              disabled={!p.active}
+                              className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
+                              placeholder="e.g. Left Handle" />
+                          </div>
+                          <div className="flex flex-col">
+                            <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Reference Value</p>
+                            <input type="number" step="any" value={p.referenceValue ?? ""}
+                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, referenceValue: e.target.value === "" ? null : Number(e.target.value) } : x))}
+                              disabled={!p.active}
+                              className="w-[90px] px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
+                              placeholder="0" />
+                          </div>
+                          <button
+                            onClick={() => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, active: !x.active } : x))}
+                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] font-semibold border transition-colors self-end ${
+                              !p.active ? "bg-[#f3f3f9] text-[#44474e] border-[#e2e2e8] hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                            }`}>
+                            {!p.active ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                            {!p.active ? "Inactive" : "Active"}
+                          </button>
+                          <button onClick={() => setFormParams(fp => fp.filter((_, j) => j !== i))} disabled={formParams.length === 1}
+                            className="p-1.5 rounded hover:bg-red-50 text-[#E63946] disabled:opacity-30 disabled:cursor-not-allowed transition-colors self-end">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-[1fr_72px_72px_72px] gap-2 px-3 py-2.5">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 px-3 py-2.5">
                         <div>
                           <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Parameter Name (key) <span className="text-[#E63946]">*</span></p>
                           <input value={p.name} maxLength={MAX_TEXT_LENGTH}

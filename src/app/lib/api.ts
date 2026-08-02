@@ -32,6 +32,7 @@ export interface ModelParameter {
   name: string; // becomes the actual sensor/column key everywhere downstream
   label: string;
   unit: string;
+  referenceValue: number | null;
   min: number;
   max: number;
   active: boolean;
