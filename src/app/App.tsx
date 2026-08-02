@@ -1774,60 +1774,47 @@ function ModelsView() {
 
                     return (
                     <div key={i} className={`rounded-lg border transition-all ${!p.active ? "border-[#e2e2e8] bg-[#f9f9ff] opacity-60" : "border-[#e2e2e8] bg-white"}`}>
-                      <div className="px-3 pt-2.5 pb-2 border-b border-[#f3f3f9]">
-                        <div className="flex items-end gap-2">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Channel <span className="text-[#E63946]">*</span></span>
-                            <select
-                              value={channelOptions.includes(p.channel) ? p.channel : (channelOptions[0] ?? 0)}
-                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, channel: Number(e.target.value) } : x))}
-                              disabled={!p.active}
-                              className="w-16 px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9] font-mono"
-                            >
-                              {channelOptions.map((channel) => (
-                                <option key={channel} value={channel}>{channel}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Label <span className="text-[#E63946]">*</span></p>
-                            <input value={p.label} maxLength={MAX_TEXT_LENGTH}
-                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, label: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
-                              disabled={!p.active}
-                              className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
-                              placeholder="e.g. Left Handle" />
-                          </div>
-                          <div className="flex flex-col">
-                            <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Reference Value</p>
-                            <input type="number" step="any" value={p.referenceValue ?? ""}
-                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, referenceValue: e.target.value === "" ? null : Number(e.target.value) } : x))}
-                              disabled={!p.active}
-                              className="w-[90px] px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
-                              placeholder="0" />
-                          </div>
-                          <button
-                            onClick={() => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, active: !x.active } : x))}
-                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] font-semibold border transition-colors self-end ${
-                              !p.active ? "bg-[#f3f3f9] text-[#44474e] border-[#e2e2e8] hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200"
-                              : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                            }`}>
-                            {!p.active ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                            {!p.active ? "Inactive" : "Active"}
-                          </button>
-                          <button onClick={() => setFormParams(fp => fp.filter((_, j) => j !== i))} disabled={formParams.length === 1}
-                            className="p-1.5 rounded hover:bg-red-50 text-[#E63946] disabled:opacity-30 disabled:cursor-not-allowed transition-colors self-end">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 px-3 py-2.5">
+                      {/* Row 1: Channel · Label · Parameter Name */}
+                      <div className="grid grid-cols-[72px_1fr_1fr] gap-2 px-3 pt-2.5 pb-2 border-b border-[#f3f3f9]">
                         <div>
-                          <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Parameter Name (key) <span className="text-[#E63946]">*</span></p>
+                          <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Channel <span className="text-[#E63946]">*</span></p>
+                          <select
+                            value={channelOptions.includes(p.channel) ? p.channel : (channelOptions[0] ?? 0)}
+                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, channel: Number(e.target.value) } : x))}
+                            disabled={!p.active}
+                            className="w-full px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9] font-mono"
+                          >
+                            {channelOptions.map((channel) => (
+                              <option key={channel} value={channel}>{channel}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Label <span className="text-[#E63946]">*</span></p>
+                          <input value={p.label} maxLength={MAX_TEXT_LENGTH}
+                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, label: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
+                            disabled={!p.active}
+                            className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
+                            placeholder="e.g. Left Handle" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Parameter Name (key) <span className="text-[#E63946]">*</span></p>
                           <input value={p.name} maxLength={MAX_TEXT_LENGTH}
                             onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, name: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
                             disabled={!p.active}
                             className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
                             placeholder="e.g. LH" />
+                        </div>
+                      </div>
+                      {/* Row 2: Reference Value · Unit · Min · Max · Active toggle · Delete */}
+                      <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto] items-end gap-2 px-3 py-2.5">
+                        <div>
+                          <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Reference Value</p>
+                          <input type="number" step="any" value={p.referenceValue ?? ""}
+                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, referenceValue: e.target.value === "" ? null : Number(e.target.value) } : x))}
+                            disabled={!p.active}
+                            className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
+                            placeholder="0" />
                         </div>
                         <div>
                           <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Unit <span className="text-[#E63946]">*</span></p>
@@ -1851,6 +1838,19 @@ function ModelsView() {
                             disabled={!p.active}
                             className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]" />
                         </div>
+                        <button
+                          onClick={() => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, active: !x.active } : x))}
+                          className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] font-semibold border transition-colors ${
+                            !p.active ? "bg-[#f3f3f9] text-[#44474e] border-[#e2e2e8] hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                          }`}>
+                          {!p.active ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          {!p.active ? "Inactive" : "Active"}
+                        </button>
+                        <button onClick={() => setFormParams(fp => fp.filter((_, j) => j !== i))} disabled={formParams.length === 1}
+                          className="p-1.5 rounded hover:bg-red-50 text-[#E63946] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   )})}
