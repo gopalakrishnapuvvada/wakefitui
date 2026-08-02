@@ -1092,11 +1092,12 @@ function HistoryView() {
   }, [filtered, page, pageSize]);
 
   const exportHistory = () => {
-    const headers = ["Scan ID", "Part Number", "Model", "Timestamp", "Operator", "Readings"];
+    const headers = ["Scan ID", "Part Number", "Model", "Status", "Timestamp", "Operator", "Readings"];
     const rowsToExport = filtered.map(r => [
       r.scanId,
       r.partNumber,
       r.modelName,
+      (r.status || "UNKNOWN").toString().toUpperCase(),
       fmtTime(r.time),
       r.operatorUsername || "",
       Object.entries(r.readings).map(([key, value]) => `${key}: ${value}`).join("; "),
@@ -1238,6 +1239,7 @@ function HistoryView() {
                     { key: "scanId", label: "Scan ID", sortable: false },
                     { key: "partNumber", label: "Part Number", sortable: false },
                     { key: "modelName", label: "Model", sortable: true },
+                    { key: "status", label: "Status", sortable: false },
                     { key: "readings", label: "Readings", sortable: false },
                     { key: "time", label: "Timestamp", sortable: true },
                     { key: "operatorUsername", label: "Operator", sortable: true },
@@ -1260,6 +1262,16 @@ function HistoryView() {
                     <td className="px-5 py-3"><span className="font-mono text-xs font-semibold text-[#2b6485]">{r.scanId}</span></td>
                     <td className="px-5 py-3"><span className="font-mono text-xs font-semibold text-[#2b6485]">{r.partNumber}</span></td>
                     <td className="px-5 py-3 font-medium text-[#191c20]">{r.modelName}</td>
+                    <td className="px-5 py-3">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${
+                        (r.status || "").toString().toUpperCase() === "OK"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-red-50 text-red-700 border-red-200"
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${(r.status || "").toString().toUpperCase() === "OK" ? "bg-emerald-500" : "bg-red-500"}`} />
+                        {(r.status || "UNKNOWN").toString().toUpperCase()}
+                      </span>
+                    </td>
                     <td className="px-5 py-3">
                       <div className="flex gap-1 flex-wrap max-w-xs">
                         {Object.entries(r.readings).slice(0, 3).map(([k, v]) => (
@@ -1288,7 +1300,7 @@ function HistoryView() {
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-[#44474e]">No approved records found for the selected period.</td></tr>
+                  <tr><td colSpan={8} className="px-5 py-12 text-center text-sm text-[#44474e]">No approved records found for the selected period.</td></tr>
                 )}
               </tbody>
             </table>
