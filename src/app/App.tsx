@@ -414,7 +414,7 @@ function DashboardView() {
                   <YAxis tick={{ fontSize: 11, fill: "#44474e" }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{ borderRadius: 6, border: "1px solid #e2e2e8", fontSize: 12 }}
-                    formatter={(v: number, name: string | number) => [v, name === "OK" ? "OK" : "NOT OK"]}
+                      formatter={(v: number, name: string | number) => [v, name === "OK" ? "OK" : "NOT OK"]}
                   />
                   <Bar dataKey="okCount" name="OK" stackId="status" fill="#2D6A4F" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="nokCount" name="NOT OK" stackId="status" fill="#E63946" radius={[4, 4, 0, 0]} />
@@ -808,6 +808,23 @@ function ScanView({ session }: { session: Session }) {
                       ? <>{result!.value} <span className="text-sm font-medium">{p.unit}</span></>
                       : <span className="text-base text-[#c4c6cf] font-normal">No reading</span>}
                   </div>
+                  {/* Reference Value & Relative Value */}
+                  {(p.referenceValue !== null && p.referenceValue !== undefined) && (
+                    <div className="flex items-center gap-3 mb-2 text-[11px] font-medium">
+                      <span className="text-[#44474e]">
+                        Ref: <span className="font-semibold text-[#191c20]">{p.referenceValue} {p.unit}</span>
+                      </span>
+                      {hasValue && (
+                        <span className={`${
+                          Math.abs(result!.value - p.referenceValue) <= (p.max - p.min) * 0.1
+                            ? "text-emerald-700"
+                            : "text-amber-600"
+                        }`}>
+                          Relative: <span className="font-semibold">{(result!.value - p.referenceValue).toFixed(2)} {p.unit}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="relative h-1.5 bg-[#e2e2e8] rounded-full overflow-visible">
                     <div className="absolute inset-0 flex">
                       <div className="w-[10%] border-r border-dashed border-amber-400/60" />
