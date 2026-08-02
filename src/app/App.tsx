@@ -381,7 +381,7 @@ function DashboardView() {
               <h3 className="font-semibold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 16 }}>
                 Last 30 Days — Approved Scans
               </h3>
-              <p className="text-xs text-[#44474e]">OK scans only</p>
+              <p className="text-xs text-[#44474e]">OK vs NOT OK scans</p>
             </div>
             <Select value={chartModel} onValueChange={setChartModel}>
               <SelectTrigger className="w-[180px] border-[#e2e2e8] bg-white text-xs font-medium text-[#191c20] focus-visible:border-[#031f41] focus-visible:ring-0">
@@ -412,9 +412,12 @@ function DashboardView() {
                     tickFormatter={(d: string) => formatChartDate(d)}
                   />
                   <YAxis tick={{ fontSize: 11, fill: "#44474e" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={{ borderRadius: 6, border: "1px solid #e2e2e8", fontSize: 12 }}
-                    formatter={(v: number) => [v, "Approved"]} />
-                  <Bar dataKey="count" name="Approved" fill="#2D6A4F" radius={[4, 4, 0, 0]} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 6, border: "1px solid #e2e2e8", fontSize: 12 }}
+                    formatter={(v: number, name: string | number) => [v, name === "OK" ? "OK" : "NOT OK"]}
+                  />
+                  <Bar dataKey="okCount" name="OK" stackId="status" fill="#2D6A4F" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="nokCount" name="NOT OK" stackId="status" fill="#E63946" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

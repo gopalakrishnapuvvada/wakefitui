@@ -63,6 +63,8 @@ export interface DashboardSummary {
 
 export interface ApprovedScansPoint {
   day: string; // YYYY-MM-DD
+  okCount: number;
+  nokCount: number;
   count: number;
 }
 
