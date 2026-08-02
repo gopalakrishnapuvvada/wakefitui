@@ -70,6 +70,7 @@ export interface RecentScan {
   scanId: number;
   partNumber: string;
   modelName: string;
+  status: OverallStatus | string | null;
   role: string | null;
   operatorUsername: string | null;
   time: string;
@@ -183,10 +184,19 @@ export function getScanResult(scanId: string): Promise<ScanRecord> {
   return request(`/wakefit/scan/result${qs({ scanId })}`);
 }
 
-export function saveScan(scanId: string, username: string, role: Role) {
+export function saveScan(scanId: string, username: string, role: Role, scanData?: ScanRecord) {
   return request<{ saved: boolean; scanId: string; overallStatus?: OverallStatus; reason?: string }>(
     "/wakefit/save-scan",
-    { method: "POST", body: JSON.stringify({ scanId, username, role }) }
+    {
+      method: "POST",
+      body: JSON.stringify({
+        scanId,
+        username,
+        role,
+        overallStatus: scanData?.overallStatus ?? "NOT OK",
+        scanData,
+      }),
+    }
   );
 }
 

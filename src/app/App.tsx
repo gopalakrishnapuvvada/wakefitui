@@ -468,8 +468,8 @@ function DashboardView() {
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#e2e2e8]">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 16 }}>Recent Scans</h3>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-700">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />OK only
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#f3f3f9] border border-[#e2e2e8] text-[10px] font-semibold text-[#44474e]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#2b6485]" />Latest scan outcomes
             </span>
           </div>
           <button onClick={load} className="flex items-center gap-1 text-xs text-[#2b6485] font-medium hover:underline">
@@ -480,7 +480,7 @@ function DashboardView() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[#f7f9fc] border-b border-[#e2e2e8]">
-                {["Scan ID", "Part Number", "Model", "Role", "Time"].map(h => (
+                {["Scan ID", "Part Number", "Model", "Status", "Role", "Time"].map(h => (
                   <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-[#44474e] uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -492,13 +492,23 @@ function DashboardView() {
                   <td className="px-5 py-3 font-mono text-xs font-semibold text-[#2b6485]">{r.partNumber}</td>
                   <td className="px-5 py-3 font-medium text-[#191c20]">{r.modelName}</td>
                   <td className="px-5 py-3">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${
+                      (r.status || "").toString().toUpperCase() === "OK"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-red-50 text-red-700 border-red-200"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${(r.status || "").toString().toUpperCase() === "OK" ? "bg-emerald-500" : "bg-red-500"}`} />
+                      {(r.status || "UNKNOWN").toString().toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
                     {r.role ? <RoleBadge role={r.role as Role} /> : <span className="text-xs text-[#c4c6cf]">—</span>}
                   </td>
                   <td className="px-5 py-3 text-xs text-[#44474e]">{fmtTime(r.time)}</td>
                 </tr>
               ))}
               {recent.length === 0 && (
-                <tr><td colSpan={5} className="px-5 py-10 text-center text-sm text-[#44474e]">No approved scans yet.</td></tr>
+                <tr><td colSpan={6} className="px-5 py-10 text-center text-sm text-[#44474e]">No recent scans yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -516,7 +526,7 @@ function ScanView({ session }: { session: Session }) {
   const [models, setModels] = useState<WakefitModel[]>([]);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [selectedPartNumber, setSelectedPartNumber] = useState<string>("");
-  const [simulate, setSimulate] = useState(false);
+  const [simulate, setSimulate] = useState(true);
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [record, setRecord] = useState<ScanRecord | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -592,15 +602,15 @@ function ScanView({ session }: { session: Session }) {
       }
       setRecord(finalRecord);
       setScanState("done");
-      // OK results must be saved to persist in history — do it automatically.
-      if (finalRecord.overallStatus === "OK") {
-        setSaving(true);
-        try {
-          const sr = await api.saveScan(finalRecord.scanId, session.username, session.role);
-          setSaveResult(sr);
-          setShowLabelDetails(false);
-          
-          // Automatically print label after successful save (only if printer enabled)
+      // Save all completed scan results, including failed ones, so the backend can persist the data payload.
+      setSaving(true);
+      try {
+        const sr = await api.saveScan(finalRecord.scanId, session.username, session.role, finalRecord);
+        setSaveResult(sr);
+        setShowLabelDetails(false);
+
+        // Only print labels for successful passes.
+        if (finalRecord.overallStatus === "OK") {
           if (printerEnabled) {
             try {
               const printRes = await api.printLabel(sr.scanId, 1);
@@ -609,15 +619,14 @@ function ScanView({ session }: { session: Session }) {
               setPrintResult({ printed: false, error: e.message });
             }
           } else {
-            // Printer disabled: mark as ready for next scan (no print needed)
             setPrintResult({ printed: true });
           }
-        } catch (e: any) {
-          setSaveResult({ saved: false, reason: e.message });
-          setShowLabelDetails(false);
-        } finally {
-          setSaving(false);
         }
+      } catch (e: any) {
+        setSaveResult({ saved: false, reason: e.message });
+        setShowLabelDetails(false);
+      } finally {
+        setSaving(false);
       }
     } catch (e: any) {
       setScanState("error");
@@ -660,7 +669,7 @@ function ScanView({ session }: { session: Session }) {
       partNumber: selectedModel.partNumber,
       modelName: selectedModel.modelName,
       timestamp: fmtTimeIST(record.timestamp),
-      status: "OK",
+      status: record.overallStatus ?? "NOT OK",
     });
   }, [record, selectedModel, labelScanId]);
 
