@@ -97,6 +97,20 @@ export interface ScanParamResult {
   max: number;
   value: number;
   ok: boolean;
+  referenceValue?: number | null;
+  absoluteValue?: number;
+  relativeValue?: number;
+}
+
+export interface ScanOperationResult {
+  name: string;
+  unit: string;
+  channelX: number;
+  operator: "+" | "-";
+  channelY: number;
+  valueX: number;
+  valueY: number;
+  value: number;
 }
 
 export interface ScanRecord {
@@ -106,6 +120,7 @@ export interface ScanRecord {
   modelName: string;
   category: string;
   results: ScanParamResult[];
+  operations?: ScanOperationResult[];
   overallStatus: OverallStatus;
   timestamp: string;
   status: "processing" | "done" | "error";

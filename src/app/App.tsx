@@ -676,9 +676,60 @@ function ScanView({ session }: { session: Session }) {
     });
   }, [record, selectedModel, labelScanId]);
 
+  const scanOperations = scanState === "done" && record?.operations ? record.operations : [];
+  const displayOperations = useMemo(() => {
+    if (scanState === "done" && scanOperations.length > 0) {
+      return scanOperations.map((op: {
+        name: string;
+        unit: string;
+        channelX: number;
+        operator: "+" | "-";
+        channelY: number;
+        value: number;
+      }) => ({
+        ...op,
+        hasValue: true,
+      }));
+    }
+
+    if (selectedModel?.operations?.length) {
+      return selectedModel.operations.map((op: {
+        name: string;
+        unit: string;
+        channelX: number;
+        operator: "+" | "-";
+        channelY: number;
+      }) => ({
+        ...op,
+        value: null,
+        hasValue: false,
+      }));
+    }
+
+    return [] as Array<{
+      name: string;
+      unit: string;
+      channelX: number;
+      operator: "+" | "-";
+      channelY: number;
+      value: number | null;
+      hasValue: boolean;
+    }>;
+  }, [scanOperations, scanState, selectedModel]);
+
+  const operationModeLabel = scanState === "done" ? "Live" : "Configured";
+  const operationPanelSizingClass = !selectedModel
+    ? "lg:min-h-[132px]"
+    : scanState === "done"
+      ? "lg:min-h-[280px]"
+      : "lg:min-h-[220px]";
+
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="w-full max-w-none space-y-5">
       {modelsError && <ErrorBanner message={modelsError} onRetry={() => window.location.reload()} />}
+
+      <div className="grid gap-5 items-start lg:grid-cols-[minmax(0,1.45fr)_minmax(420px,1fr)] 2xl:grid-cols-[minmax(0,1.6fr)_minmax(500px,1fr)]">
+        <div className="space-y-5">
 
       {/* Step 1: Model Selection */}
       <Card className="p-5">
@@ -976,6 +1027,83 @@ function ScanView({ session }: { session: Session }) {
           )}
         </Card>
       )}
+        </div>
+
+        <Card className={`p-5 lg:sticky lg:top-5 ${operationPanelSizingClass}`}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 17 }}>
+              Operation Details
+            </h2>
+            {selectedModel && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full border border-[#e2e2e8] bg-[#f7f9fc] text-[#44474e] font-semibold">
+                {displayOperations.length} row{displayOperations.length === 1 ? "" : "s"} • {operationModeLabel}
+              </span>
+            )}
+          </div>
+
+          {!selectedModel && (
+            <div className="rounded-lg border border-dashed border-[#e2e2e8] bg-[#f9f9ff] p-4 text-sm text-[#44474e] space-y-1">
+              {/* <p>Select a product model to view configured operations.</p> */}
+              <p>After scan, this panel switches to live operation values.</p>
+            </div>
+          )}
+
+          {selectedModel && displayOperations.length === 0 && (
+            <div className="rounded-lg border border-dashed border-[#e2e2e8] bg-[#f9f9ff] p-4 text-sm text-[#44474e]">
+              No operations configured for this model.
+            </div>
+          )}
+
+          {displayOperations.length > 0 && (
+            <div className="rounded-lg border border-[#e2e2e8] overflow-hidden bg-white">
+              <div className="overflow-x-auto">
+                <table className="w-full table-fixed text-sm">
+                  <thead>
+                    <tr className="bg-[#f7f9fc] border-b border-[#e2e2e8]">
+                      <th className="w-[32%] text-left px-4 py-2.5 text-[11px] font-semibold text-[#44474e] uppercase tracking-wide">Operation Name</th>
+                      <th className="w-[26%] text-left px-4 py-2.5 text-[11px] font-semibold text-[#44474e] uppercase tracking-wide">Operation</th>
+                      <th className="w-[14%] text-left px-4 py-2.5 text-[11px] font-semibold text-[#44474e] uppercase tracking-wide">X</th>
+                      <th className="w-[14%] text-left px-4 py-2.5 text-[11px] font-semibold text-[#44474e] uppercase tracking-wide">Y</th>
+                      <th className="w-[14%] text-right px-4 py-2.5 text-[11px] font-semibold text-[#44474e] uppercase tracking-wide">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayOperations.map((op: {
+                      name: string;
+                      unit: string;
+                      channelX: number;
+                      operator: "+" | "-";
+                      channelY: number;
+                      value: number | null;
+                      hasValue: boolean;
+                    }, index: number) => (
+                      <tr
+                        key={`${op.name}-${op.channelX}-${op.channelY}-${index}`}
+                        className={index < displayOperations.length - 1 ? "border-b border-[#f3f3f9]" : ""}
+                      >
+                        <td className="px-4 py-2.5 text-sm font-medium text-[#191c20] max-w-[220px] truncate" title={op.name}>{op.name || "—"}</td>
+                        <td className="px-4 py-2.5 text-sm text-[#44474e]">{op.operator === "+" ? "Addition (+)" : "Subtraction (-)"}</td>
+                        <td className="px-4 py-2.5 text-sm font-mono text-[#2b6485]">CH-{op.channelX}</td>
+                        <td className="px-4 py-2.5 text-sm font-mono text-[#2b6485]">CH-{op.channelY}</td>
+                        <td className="px-4 py-2.5 text-sm font-semibold text-[#191c20] text-right">
+                          {op.hasValue && typeof op.value === "number" ? (
+                            <>
+                              {op.value.toFixed(2)}
+                              {op.unit ? <span className="font-normal text-[#44474e]"> {op.unit}</span> : null}
+                            </>
+                          ) : (
+                            <span className="font-normal text-[#c4c6cf]">Pending</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
