@@ -1427,6 +1427,57 @@ function createEmptyOperation(activeChannels: number[]): OperationFormState {
   return { name: "", operator: "-", unit: "", channelX: activeChannels[0] ?? 0, channelY: activeChannels[1] ?? 0 };
 }
 
+function getOperationPairKey(channelX: number, channelY: number): string {
+  const [left, right] = channelX <= channelY ? [channelX, channelY] : [channelY, channelX];
+  return `${left}:${right}`;
+}
+
+function getNextAvailableOperation(activeChannels: number[], operations: OperationFormState[]): OperationFormState | null {
+  if (activeChannels.length < 2) return null;
+
+  const usedPairs = new Set(operations.map((op) => getOperationPairKey(op.channelX, op.channelY)));
+
+  for (const channelX of activeChannels) {
+    for (const channelY of activeChannels) {
+      const pairKey = getOperationPairKey(channelX, channelY);
+      if (!usedPairs.has(pairKey)) {
+        return { name: "", operator: "-", unit: "", channelX, channelY };
+      }
+    }
+  }
+
+  return null;
+}
+
+function getOperationChannelYOptions(
+  operations: OperationFormState[],
+  currentIndex: number,
+  activeChannels: number[],
+  channelXOverride?: number,
+): number[] {
+  const currentOperation = operations[currentIndex];
+  if (!currentOperation) return activeChannels;
+
+  const channelX = channelXOverride ?? currentOperation.channelX;
+
+  const usedPairs = new Set(
+    operations
+      .filter((_, index) => index !== currentIndex)
+      .map((op) => getOperationPairKey(op.channelX, op.channelY)),
+  );
+
+  const validChannelY = activeChannels.filter((channelY) => {
+    const pairKey = getOperationPairKey(channelX, channelY);
+    return !usedPairs.has(pairKey);
+  });
+
+  if (validChannelY.length === 0) {
+    return activeChannels;
+  }
+
+  return validChannelY;
+}
+
 function ModelsView() {
   const [models, setModels] = useState<WakefitModel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1546,6 +1597,29 @@ function ModelsView() {
       if (param.min > param.max) {
         return `Min cannot be greater than Max for channel ${param.channel}.`;
       }
+    }
+
+    const activeChannelSet = new Set(activeParams.map((param) => param.channel));
+    const usedOperationPairs = new Set<string>();
+
+    for (let index = 0; index < formOps.length; index += 1) {
+      const operation = formOps[index];
+      const operationNumber = index + 1;
+
+      if (!Number.isInteger(operation.channelX) || !activeChannelSet.has(operation.channelX)) {
+        return `Operation ${operationNumber} has an invalid Channel X selection.`;
+      }
+
+      if (!Number.isInteger(operation.channelY) || !activeChannelSet.has(operation.channelY)) {
+        return `Operation ${operationNumber} has an invalid Channel Y selection.`;
+      }
+
+      const pairKey = getOperationPairKey(operation.channelX, operation.channelY);
+      if (usedOperationPairs.has(pairKey)) {
+        return `Operation ${operationNumber} duplicates an existing channel pair. Combinations like 1,2 and 2,1 are not allowed.`;
+      }
+
+      usedOperationPairs.add(pairKey);
     }
 
     return null;
@@ -1713,7 +1787,8 @@ function ModelsView() {
 
       {showModal && (() => {
         const activeChannels = formParams.filter(p => p.active).map(p => p.channel);
-        const canAddOp = formOps.length < MAX_OPERATIONS && activeChannels.length >= 2;
+        const nextOperation = getNextAvailableOperation(activeChannels, formOps);
+        const canAddOp = formOps.length < MAX_OPERATIONS && nextOperation !== null;
         return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto py-8">
           <Card className="w-[680px] mx-4">
@@ -1902,9 +1977,15 @@ function ModelsView() {
                         <span className="ml-2 text-xs text-amber-600">Add at least 2 active channels first</span>
                       )}
                     </div>
-                    <button onClick={() => setFormOps(prev => [...prev, createEmptyOperation(activeChannels)])}
+                    <button onClick={() => {
+                      setFormOps((previous) => {
+                        const next = getNextAvailableOperation(activeChannels, previous);
+                        if (!next) return previous;
+                        return [...previous, next];
+                      });
+                    }}
                       disabled={!canAddOp}
-                      title={!canAddOp ? (activeChannels.length < 2 ? "Need ≥ 2 active channels" : "Max 8 operations reached") : undefined}
+                      title={!canAddOp ? (activeChannels.length < 2 ? "Need ≥ 2 active channels" : "No unique channel pairs available") : undefined}
                       className="flex items-center gap-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 text-[#2b6485] hover:underline">
                       <Plus className="w-3 h-3" /> Add Operation
                     </button>
@@ -1928,7 +2009,10 @@ function ModelsView() {
                         <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide"></p>
                       </div>
                       {/* Rows */}
-                      {formOps.map((op, i) => (
+                      {formOps.map((op, i) => {
+                        const channelYOptions = getOperationChannelYOptions(formOps, i, activeChannels);
+
+                        return (
                         <div key={i} className={`grid grid-cols-[28px_1fr_80px_60px_1fr_1fr_28px] gap-2 items-center px-3 py-2 ${i < formOps.length - 1 ? "border-b border-[#f3f3f9]" : ""}`}>
                           <span className="text-xs font-mono font-bold text-[#2b6485]">{i + 1}</span>
                           <input value={op.name} maxLength={MAX_TEXT_LENGTH}
@@ -1946,7 +2030,20 @@ function ModelsView() {
                             <option value="-">− (Sub)</option>
                           </select>
                           <select value={op.channelX}
-                            onChange={e => setFormOps(ops => ops.map((o, j) => j === i ? { ...o, channelX: Number(e.target.value) } : o))}
+                            onChange={e => {
+                              const nextChannelX = Number(e.target.value);
+                              setFormOps((ops) => {
+                                const nextOps = ops.map((o, j) => j === i ? { ...o, channelX: nextChannelX } : o);
+                                const nextYOptions = getOperationChannelYOptions(nextOps, i, activeChannels, nextChannelX);
+                                if (nextYOptions.includes(nextOps[i].channelY)) {
+                                  return nextOps;
+                                }
+                                return nextOps.map((o, j) => {
+                                  if (j !== i) return o;
+                                  return { ...o, channelY: nextYOptions[0] ?? o.channelY };
+                                });
+                              });
+                            }}
                             className="w-full px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors font-mono">
                             {activeChannels.map(ch => {
                               const param = formParams.find(p => p.channel === ch);
@@ -1956,7 +2053,7 @@ function ModelsView() {
                           <select value={op.channelY}
                             onChange={e => setFormOps(ops => ops.map((o, j) => j === i ? { ...o, channelY: Number(e.target.value) } : o))}
                             className="w-full px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors font-mono">
-                            {activeChannels.map(ch => {
+                            {channelYOptions.map(ch => {
                               const param = formParams.find(p => p.channel === ch);
                               return <option key={ch} value={ch}>CH-{ch}{param?.label ? ` (${param.label})` : ""}</option>;
                             })}
@@ -1966,7 +2063,7 @@ function ModelsView() {
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   )}
                   {formOps.length > 0 && (
