@@ -1420,6 +1420,13 @@ function createEmptyParam(): ParamFormState {
   return { channel: 0, name: "", label: "", unit: "", referenceValue: null, min: 0, max: 100, active: true };
 }
 
+const MAX_OPERATIONS = 8;
+type OperationFormState = { name: string; operator: "+" | "-"; unit: string; channelX: number; channelY: number; };
+
+function createEmptyOperation(activeChannels: number[]): OperationFormState {
+  return { name: "", operator: "-", unit: "", channelX: activeChannels[0] ?? 0, channelY: activeChannels[1] ?? 0 };
+}
+
 function ModelsView() {
   const [models, setModels] = useState<WakefitModel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1429,8 +1436,10 @@ function ModelsView() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<"channels" | "operations">("channels");
   const [form, setForm] = useState<ModelFormState>({ partNumber: "", modelName: "", category: "", active: true });
   const [formParams, setFormParams] = useState<ParamFormState[]>([createEmptyParam()]);
+  const [formOps, setFormOps] = useState<OperationFormState[]>([]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -1449,6 +1458,8 @@ function ModelsView() {
     setEditingPartNumber(null);
     setForm({ partNumber: "", modelName: "", category: "", active: true });
     setFormParams([createEmptyParam()]);
+    setFormOps([]);
+    setActiveTab("channels");
     setSaveError(null);
     setShowModal(true);
   };
@@ -1457,6 +1468,8 @@ function ModelsView() {
     setEditingPartNumber(m.partNumber);
     setForm({ partNumber: m.partNumber, modelName: m.modelName, category: m.category, active: m.active });
     setFormParams(m.parameters.length ? m.parameters : [createEmptyParam()]);
+    setFormOps(m.operations?.length ? m.operations.map(o => ({ name: o.name, operator: o.operator, unit: o.unit, channelX: o.channelX, channelY: o.channelY })) : []);
+    setActiveTab("channels");
     setSaveError(null);
     setShowModal(true);
   };
@@ -1559,6 +1572,13 @@ function ModelsView() {
         label: param.label.trim(),
         unit: param.unit.trim(),
         referenceValue: param.referenceValue ?? null,
+      })),
+      operations: formOps.map((op) => ({
+        name: op.name.trim(),
+        unit: op.unit.trim(),
+        channelX: op.channelX,
+        operator: op.operator,
+        channelY: op.channelY,
       })),
     };
 
@@ -1691,16 +1711,22 @@ function ModelsView() {
         </div>
       )}
 
-      {showModal && (
+      {showModal && (() => {
+        const activeChannels = formParams.filter(p => p.active).map(p => p.channel);
+        const canAddOp = formOps.length < MAX_OPERATIONS && activeChannels.length >= 2;
+        return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto py-8">
-          <Card className="w-[640px] mx-4">
+          <Card className="w-[680px] mx-4">
+            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#e2e2e8]">
               <h3 className="font-bold text-[#191c20]" style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 18 }}>
                 {editingPartNumber ? "Edit Model" : "Add New Model"}
               </h3>
               <button onClick={() => setShowModal(false)} className="p-1.5 rounded hover:bg-[#f3f3f9] text-[#44474e] transition-colors"><X className="w-4 h-4" /></button>
             </div>
-            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+
+            {/* Common fields */}
+            <div className="px-6 pt-5 pb-4 space-y-4 border-b border-[#e2e2e8]">
               {saveError && <ErrorBanner message={saveError} />}
               <p className="text-xs text-[#44474e]">Fields marked with <span className="text-[#E63946]">*</span> are required.</p>
               <div>
@@ -1708,14 +1734,10 @@ function ModelsView() {
                   Part Number <span className="text-[#E63946]">*</span>
                   <span className="ml-1.5 text-xs font-normal text-[#44474e]">Unique key — cannot be changed after creation</span>
                 </label>
-                <input
-                  value={form.partNumber}
-                  disabled={!!editingPartNumber}
-                  maxLength={MAX_TEXT_LENGTH}
+                <input value={form.partNumber} disabled={!!editingPartNumber} maxLength={MAX_TEXT_LENGTH}
                   onChange={e => setForm(f => ({ ...f, partNumber: e.target.value.slice(0, MAX_TEXT_LENGTH) }))}
                   className="w-full px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors font-mono tracking-wide disabled:bg-[#f3f3f9]"
-                  placeholder="e.g. PN-1001"
-                />
+                  placeholder="e.g. PN-1001" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1723,8 +1745,8 @@ function ModelsView() {
                     Model Name <span className="text-[#E63946]">*</span>
                     <span className="ml-1.5 text-xs font-normal text-[#44474e]">Cannot be changed after creation</span>
                   </label>
-                  <input value={form.modelName} maxLength={MAX_TEXT_LENGTH} onChange={e => setForm(f => ({ ...f, modelName: e.target.value.slice(0, MAX_TEXT_LENGTH) }))}
-                    disabled={!!editingPartNumber}
+                  <input value={form.modelName} maxLength={MAX_TEXT_LENGTH} disabled={!!editingPartNumber}
+                    onChange={e => setForm(f => ({ ...f, modelName: e.target.value.slice(0, MAX_TEXT_LENGTH) }))}
                     className="w-full px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
                     placeholder="e.g. Chair Model X" />
                 </div>
@@ -1733,8 +1755,8 @@ function ModelsView() {
                     Category
                     <span className="ml-1.5 text-xs font-normal text-[#44474e]">Cannot be changed after creation</span>
                   </label>
-                  <input value={form.category} maxLength={MAX_TEXT_LENGTH} onChange={e => setForm(f => ({ ...f, category: e.target.value.slice(0, MAX_TEXT_LENGTH) }))}
-                    disabled={!!editingPartNumber}
+                  <input value={form.category} maxLength={MAX_TEXT_LENGTH} disabled={!!editingPartNumber}
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value.slice(0, MAX_TEXT_LENGTH) }))}
                     className="w-full px-3 py-2 rounded-lg border border-[#e2e2e8] text-sm bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
                     placeholder="e.g. Office Chair" />
                 </div>
@@ -1746,117 +1768,217 @@ function ModelsView() {
                 </button>
                 <span className="text-sm text-[#44474e]">Active</span>
               </div>
+            </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-semibold text-[#191c20]">
-                    Parameters
-                    <span className="ml-1.5 text-xs font-normal text-[#44474e]">{formParams.filter(p => p.active).length} active · {formParams.filter(p => !p.active).length} disabled</span>
-                  </label>
-                  <button
-                    onClick={() => {
-                      setFormParams((prev) => {
+            {/* Tabs */}
+            <div className="flex border-b border-[#e2e2e8] px-6">
+              {(["channels", "operations"] as const).map(tab => (
+                <button key={tab} onClick={() => setActiveTab(tab)}
+                  className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+                    activeTab === tab
+                      ? "border-[#031f41] text-[#031f41]"
+                      : "border-transparent text-[#44474e] hover:text-[#191c20]"
+                  }`}>
+                  {tab === "channels" ? "Channel Management" : "Operations Management"}
+                  {tab === "channels" && (
+                    <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#f3f3f9] text-[#44474e]">
+                      {formParams.filter(p => p.active).length}
+                    </span>
+                  )}
+                  {tab === "operations" && (
+                    <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#f3f3f9] text-[#44474e]">
+                      {formOps.length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab body */}
+            <div className="p-6 space-y-3 max-h-[45vh] overflow-y-auto">
+
+              {/* ── Channel Management Tab ── */}
+              {activeTab === "channels" && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[#44474e]">{formParams.filter(p => p.active).length} active · {formParams.filter(p => !p.active).length} disabled</span>
+                    <button
+                      onClick={() => setFormParams((prev) => {
                         const nextChannel = getNextAvailableChannel(prev);
                         if (nextChannel === null) return prev;
-
                         return [...prev, { ...createEmptyParam(), channel: nextChannel }];
-                      });
-                    }}
-                    disabled={!canAddParameter}
-                    title={!canAddParameter ? "All channels (0-7) are already assigned" : undefined}
-                    className="flex items-center gap-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 text-[#2b6485] hover:underline">
-                    <Plus className="w-3 h-3" /> Add Parameter
-                  </button>
-                </div>
-                <div className="space-y-2.5">
-                  {formParams.map((p, i) => {
-                    const channelOptions = getChannelOptions(formParams, i);
+                      })}
+                      disabled={!canAddParameter}
+                      title={!canAddParameter ? "All channels (0-7) are already assigned" : undefined}
+                      className="flex items-center gap-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 text-[#2b6485] hover:underline">
+                      <Plus className="w-3 h-3" /> Add Parameter
+                    </button>
+                  </div>
+                  <div className="space-y-2.5">
+                    {formParams.map((p, i) => {
+                      const channelOptions = getChannelOptions(formParams, i);
+                      return (
+                      <div key={i} className={`rounded-lg border transition-all ${!p.active ? "border-[#e2e2e8] bg-[#f9f9ff] opacity-60" : "border-[#e2e2e8] bg-white"}`}>
+                        {/* Row 1: Channel · Label · Parameter Name */}
+                        <div className="grid grid-cols-[72px_1fr_1fr] gap-2 px-3 pt-2.5 pb-2 border-b border-[#f3f3f9]">
+                          <div>
+                            <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Channel <span className="text-[#E63946]">*</span></p>
+                            <select value={channelOptions.includes(p.channel) ? p.channel : (channelOptions[0] ?? 0)}
+                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, channel: Number(e.target.value) } : x))}
+                              disabled={!p.active}
+                              className="w-full px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9] font-mono">
+                              {channelOptions.map(ch => <option key={ch} value={ch}>{ch}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Label <span className="text-[#E63946]">*</span></p>
+                            <input value={p.label} maxLength={MAX_TEXT_LENGTH} disabled={!p.active}
+                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, label: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
+                              className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
+                              placeholder="e.g. Left Handle" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Parameter Name (key) <span className="text-[#E63946]">*</span></p>
+                            <input value={p.name} maxLength={MAX_TEXT_LENGTH} disabled={!p.active}
+                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, name: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
+                              className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
+                              placeholder="e.g. LH" />
+                          </div>
+                        </div>
+                        {/* Row 2: Reference Value · Unit · Min · Max · Active · Delete */}
+                        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto] items-end gap-2 px-3 py-2.5">
+                          <div>
+                            <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Reference Value</p>
+                            <input type="number" step="any" value={p.referenceValue ?? ""} disabled={!p.active}
+                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, referenceValue: e.target.value === "" ? null : Number(e.target.value) } : x))}
+                              className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
+                              placeholder="0" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Unit <span className="text-[#E63946]">*</span></p>
+                            <input value={p.unit} maxLength={MAX_TEXT_LENGTH} disabled={!p.active}
+                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, unit: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
+                              className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
+                              placeholder="mm" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Min</p>
+                            <input type="number" value={p.min} min={MIN_NUMERIC_VALUE} max={MAX_NUMERIC_VALUE} disabled={!p.active}
+                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, min: clampNumericValue(Number(e.target.value)) } : x))}
+                              className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Max</p>
+                            <input type="number" value={p.max} min={MIN_NUMERIC_VALUE} max={MAX_NUMERIC_VALUE} disabled={!p.active}
+                              onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, max: clampNumericValue(Number(e.target.value)) } : x))}
+                              className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]" />
+                          </div>
+                          <button onClick={() => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, active: !x.active } : x))}
+                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] font-semibold border transition-colors ${
+                              !p.active ? "bg-[#f3f3f9] text-[#44474e] border-[#e2e2e8] hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                            }`}>
+                            {!p.active ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                            {!p.active ? "Inactive" : "Active"}
+                          </button>
+                          <button onClick={() => setFormParams(fp => fp.filter((_, j) => j !== i))} disabled={formParams.length === 1}
+                            className="p-1.5 rounded hover:bg-red-50 text-[#E63946] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )})}
+                  </div>
+                </>
+              )}
 
-                    return (
-                    <div key={i} className={`rounded-lg border transition-all ${!p.active ? "border-[#e2e2e8] bg-[#f9f9ff] opacity-60" : "border-[#e2e2e8] bg-white"}`}>
-                      {/* Row 1: Channel · Label · Parameter Name */}
-                      <div className="grid grid-cols-[72px_1fr_1fr] gap-2 px-3 pt-2.5 pb-2 border-b border-[#f3f3f9]">
-                        <div>
-                          <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Channel <span className="text-[#E63946]">*</span></p>
-                          <select
-                            value={channelOptions.includes(p.channel) ? p.channel : (channelOptions[0] ?? 0)}
-                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, channel: Number(e.target.value) } : x))}
-                            disabled={!p.active}
-                            className="w-full px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9] font-mono"
-                          >
-                            {channelOptions.map((channel) => (
-                              <option key={channel} value={channel}>{channel}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Label <span className="text-[#E63946]">*</span></p>
-                          <input value={p.label} maxLength={MAX_TEXT_LENGTH}
-                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, label: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
-                            disabled={!p.active}
-                            className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
-                            placeholder="e.g. Left Handle" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide mb-1">Parameter Name (key) <span className="text-[#E63946]">*</span></p>
-                          <input value={p.name} maxLength={MAX_TEXT_LENGTH}
-                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, name: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
-                            disabled={!p.active}
-                            className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
-                            placeholder="e.g. LH" />
-                        </div>
-                      </div>
-                      {/* Row 2: Reference Value · Unit · Min · Max · Active toggle · Delete */}
-                      <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto] items-end gap-2 px-3 py-2.5">
-                        <div>
-                          <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Reference Value</p>
-                          <input type="number" step="any" value={p.referenceValue ?? ""}
-                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, referenceValue: e.target.value === "" ? null : Number(e.target.value) } : x))}
-                            disabled={!p.active}
-                            className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
-                            placeholder="0" />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Unit <span className="text-[#E63946]">*</span></p>
-                          <input value={p.unit} maxLength={MAX_TEXT_LENGTH}
-                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, unit: e.target.value.slice(0, MAX_TEXT_LENGTH) } : x))}
-                            disabled={!p.active}
-                            className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
-                            placeholder="mm" />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Min</p>
-                          <input type="number" value={p.min} min={MIN_NUMERIC_VALUE} max={MAX_NUMERIC_VALUE}
-                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, min: clampNumericValue(Number(e.target.value)) } : x))}
-                            disabled={!p.active}
-                            className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]" />
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Max</p>
-                          <input type="number" value={p.max} min={MIN_NUMERIC_VALUE} max={MAX_NUMERIC_VALUE}
-                            onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, max: clampNumericValue(Number(e.target.value)) } : x))}
-                            disabled={!p.active}
-                            className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]" />
-                        </div>
-                        <button
-                          onClick={() => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, active: !x.active } : x))}
-                          className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-[10px] font-semibold border transition-colors ${
-                            !p.active ? "bg-[#f3f3f9] text-[#44474e] border-[#e2e2e8] hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                          }`}>
-                          {!p.active ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                          {!p.active ? "Inactive" : "Active"}
-                        </button>
-                        <button onClick={() => setFormParams(fp => fp.filter((_, j) => j !== i))} disabled={formParams.length === 1}
-                          className="p-1.5 rounded hover:bg-red-50 text-[#E63946] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+              {/* ── Operations Management Tab ── */}
+              {activeTab === "operations" && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-[#44474e]">{formOps.length} / {MAX_OPERATIONS} operations</span>
+                      {activeChannels.length < 2 && (
+                        <span className="ml-2 text-xs text-amber-600">Add at least 2 active channels first</span>
+                      )}
                     </div>
-                  )})}
-                </div>
-              </div>
+                    <button onClick={() => setFormOps(prev => [...prev, createEmptyOperation(activeChannels)])}
+                      disabled={!canAddOp}
+                      title={!canAddOp ? (activeChannels.length < 2 ? "Need ≥ 2 active channels" : "Max 8 operations reached") : undefined}
+                      className="flex items-center gap-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 text-[#2b6485] hover:underline">
+                      <Plus className="w-3 h-3" /> Add Operation
+                    </button>
+                  </div>
+
+                  {formOps.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 rounded-lg border border-dashed border-[#e2e2e8] text-center">
+                      <p className="text-sm text-[#44474e] font-medium">No operations defined</p>
+                      <p className="text-xs text-[#c4c6cf] mt-1">Click "Add Operation" to create one</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-[#e2e2e8] overflow-hidden">
+                      {/* Table header */}
+                      <div className="grid grid-cols-[28px_1fr_80px_60px_1fr_1fr_28px] gap-2 px-3 py-2 bg-[#f7f9fc] border-b border-[#e2e2e8]">
+                        <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide">#</p>
+                        <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide">Name</p>
+                        <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide">Unit</p>
+                        <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide text-center">Op</p>
+                        <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide">Channel X</p>
+                        <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide">Channel Y</p>
+                        <p className="text-[10px] font-semibold text-[#44474e] uppercase tracking-wide"></p>
+                      </div>
+                      {/* Rows */}
+                      {formOps.map((op, i) => (
+                        <div key={i} className={`grid grid-cols-[28px_1fr_80px_60px_1fr_1fr_28px] gap-2 items-center px-3 py-2 ${i < formOps.length - 1 ? "border-b border-[#f3f3f9]" : ""}`}>
+                          <span className="text-xs font-mono font-bold text-[#2b6485]">{i + 1}</span>
+                          <input value={op.name} maxLength={MAX_TEXT_LENGTH}
+                            onChange={e => setFormOps(ops => ops.map((o, j) => j === i ? { ...o, name: e.target.value.slice(0, MAX_TEXT_LENGTH) } : o))}
+                            className="w-full px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors"
+                            placeholder="e.g. Handle Diff" />
+                          <input value={op.unit} maxLength={32}
+                            onChange={e => setFormOps(ops => ops.map((o, j) => j === i ? { ...o, unit: e.target.value.slice(0, 32) } : o))}
+                            className="w-full px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors"
+                            placeholder="mm" />
+                          <select value={op.operator}
+                            onChange={e => setFormOps(ops => ops.map((o, j) => j === i ? { ...o, operator: e.target.value as "+" | "-" } : o))}
+                            className="w-full px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors text-center font-semibold">
+                            <option value="+">+ (Add)</option>
+                            <option value="-">− (Sub)</option>
+                          </select>
+                          <select value={op.channelX}
+                            onChange={e => setFormOps(ops => ops.map((o, j) => j === i ? { ...o, channelX: Number(e.target.value) } : o))}
+                            className="w-full px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors font-mono">
+                            {activeChannels.map(ch => {
+                              const param = formParams.find(p => p.channel === ch);
+                              return <option key={ch} value={ch}>CH-{ch}{param?.label ? ` (${param.label})` : ""}</option>;
+                            })}
+                          </select>
+                          <select value={op.channelY}
+                            onChange={e => setFormOps(ops => ops.map((o, j) => j === i ? { ...o, channelY: Number(e.target.value) } : o))}
+                            className="w-full px-2 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors font-mono">
+                            {activeChannels.map(ch => {
+                              const param = formParams.find(p => p.channel === ch);
+                              return <option key={ch} value={ch}>CH-{ch}{param?.label ? ` (${param.label})` : ""}</option>;
+                            })}
+                          </select>
+                          <button onClick={() => setFormOps(ops => ops.filter((_, j) => j !== i))}
+                            className="p-1 rounded hover:bg-red-50 text-[#E63946] transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {formOps.length > 0 && (
+                    <p className="text-[11px] text-[#44474e] mt-1">
+                      Sequence is auto-assigned (1 → {formOps.length}) in the order rows appear. Drag to reorder is not supported — delete and re-add to change order.
+                    </p>
+                  )}
+                </>
+              )}
             </div>
+
+            {/* Footer */}
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#e2e2e8]">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-[#e2e2e8] text-sm font-medium text-[#44474e] hover:bg-[#f3f3f9] transition-colors">Cancel</button>
               <button onClick={handleSave} disabled={saving}
@@ -1867,7 +1989,8 @@ function ModelsView() {
             </div>
           </Card>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

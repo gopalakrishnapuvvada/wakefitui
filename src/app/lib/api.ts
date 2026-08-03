@@ -38,12 +38,21 @@ export interface ModelParameter {
   active: boolean;
 }
 
+export interface ModelOperation {
+  name: string;
+  unit: string;
+  channelX: number;
+  operator: "+" | "-";
+  channelY: number;
+}
+
 export interface WakefitModel {
   partNumber: string;
   modelName: string;
   category: string;
   active: boolean;
   parameters: ModelParameter[];
+  operations: ModelOperation[];
   createdAt: string;
   updatedAt: string;
 }
