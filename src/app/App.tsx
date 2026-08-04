@@ -1876,17 +1876,52 @@ function ModelsView() {
     }
 
     const activeChannelSet = new Set(activeParams.map((param) => param.channel));
+    const paramByChannel = new Map(formParams.map((param) => [param.channel, param] as const));
+
+    const getChannelDisplayName = (channel: number): string => {
+      const param = paramByChannel.get(channel);
+      return param?.label.trim() || param?.name.trim() || `Channel ${channel}`;
+    };
+
+    const getInactiveChannelMessage = (channel: number): string => {
+      const usedBy = formOps
+        .map((operation, index) => ({ operation, index }))
+        .filter(({ operation }) => operation.channelX === channel || operation.channelY === channel)
+        .map(({ operation, index }) => operation.name.trim() || `Operation ${index + 1}`);
+
+      const operationText = usedBy.length > 0 ? usedBy.join(", ") : "an operation";
+      const operationLabel = usedBy.length === 1 ? "operation" : "operations";
+
+      return `"${getChannelDisplayName(channel)}" cannot be inactive since it is used in ${operationLabel}: ${operationText}.`;
+    };
+
     const usedOperationPairs = new Set<string>();
 
     for (let index = 0; index < formOps.length; index += 1) {
       const operation = formOps[index];
       const operationNumber = index + 1;
 
-      if (!Number.isInteger(operation.channelX) || !activeChannelSet.has(operation.channelX)) {
+      if (!Number.isInteger(operation.channelX) || !CHANNEL_OPTIONS.includes(operation.channelX)) {
         return `Operation ${operationNumber} has an invalid Channel X selection.`;
       }
 
-      if (!Number.isInteger(operation.channelY) || !activeChannelSet.has(operation.channelY)) {
+      if (!activeChannelSet.has(operation.channelX)) {
+        const param = paramByChannel.get(operation.channelX);
+        if (param && !param.active) {
+          return getInactiveChannelMessage(operation.channelX);
+        }
+        return `Operation ${operationNumber} has an invalid Channel X selection.`;
+      }
+
+      if (!Number.isInteger(operation.channelY) || !CHANNEL_OPTIONS.includes(operation.channelY)) {
+        return `Operation ${operationNumber} has an invalid Channel Y selection.`;
+      }
+
+      if (!activeChannelSet.has(operation.channelY)) {
+        const param = paramByChannel.get(operation.channelY);
+        if (param && !param.active) {
+          return getInactiveChannelMessage(operation.channelY);
+        }
         return `Operation ${operationNumber} has an invalid Channel Y selection.`;
       }
 
