@@ -1280,6 +1280,11 @@ function HistoryView() {
     else { setSortCol(col); setSortDir("asc"); }
   };
 
+  const isReprintDisabled = (row: HistoryRow) => {
+    const status = (row.status || "").toString().toUpperCase();
+    return printingId === row.id || !printerEnabled || status !== "OK";
+  };
+
   return (
     <div className="space-y-5">
       {/* <Card className="p-5">
@@ -1431,9 +1436,9 @@ function HistoryView() {
                     <td className="px-5 py-3 text-[#44474e]">{r.operatorUsername || "—"}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => handleReprint(r)} disabled={printingId === r.id || !printerEnabled}
+                        <button onClick={() => handleReprint(r)} disabled={isReprintDisabled(r)}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#e2e2e8] text-xs font-medium text-[#031f41] hover:bg-[#f3f3f9] transition-colors disabled:opacity-50"
-                          title={!printerEnabled ? "Printer is disabled in settings" : ""}>
+                          title={(!printerEnabled ? "Printer is disabled in settings" : "") || ((r.status || "").toString().toUpperCase() !== "OK" ? "Reprint is only available for OK status" : "")}>
                           {printingId === r.id ? <Spinner className="w-3 h-3" /> : <Printer className="w-3 h-3" />}
                           Reprint
                         </button>
