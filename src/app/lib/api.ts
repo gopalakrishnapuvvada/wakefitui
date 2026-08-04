@@ -143,6 +143,9 @@ export interface HistoryRow {
   modelName: string;
   category: string;
   readings: Record<string, number>;
+  operations?: ScanOperationResult[];
+  reference?: Record<string, number> | null;
+  relative?: Record<string, number> | null;
   status: OverallStatus;
   operatorUsername: string | null;
   operatorRole: string | null;

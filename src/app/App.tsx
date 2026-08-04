@@ -20,6 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
 import * as api from "@/app/lib/api";
 import type {
   Role, OverallStatus, WakefitModel, ModelParameter, ScanRecord,
@@ -1126,6 +1133,7 @@ function HistoryView() {
   const [printingId, setPrintingId] = useState<number | null>(null);
   const [printMsg, setPrintMsg] = useState<{ id: number; ok: boolean; text: string } | null>(null);
   const [printerEnabled, setPrinterEnabled] = useState(true);
+  const [selectedRow, setSelectedRow] = useState<HistoryRow | null>(null);
   const hasValidDateRange = Boolean(startDate && endDate && startDate <= endDate);
 
   const handleReprint = async (row: HistoryRow) => {
@@ -1393,6 +1401,7 @@ function HistoryView() {
                     { key: "readings", label: "Readings", sortable: false },
                     { key: "time", label: "Timestamp", sortable: true },
                     { key: "operatorUsername", label: "Operator", sortable: true },
+                    { key: "details", label: "Details", sortable: false },
                     { key: "print", label: "Actions", sortable: false },
                   ].map(col => (
                     <th key={col.key} className="text-left px-5 py-3 text-xs font-semibold text-[#44474e] uppercase tracking-wide">
@@ -1435,6 +1444,15 @@ function HistoryView() {
                     <td className="px-5 py-3 text-xs text-[#44474e]">{fmtTime(r.time)}</td>
                     <td className="px-5 py-3 text-[#44474e]">{r.operatorUsername || "—"}</td>
                     <td className="px-5 py-3">
+                      <button
+                        onClick={() => setSelectedRow(r)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#e2e2e8] text-xs font-medium text-[#031f41] hover:bg-[#f3f3f9] transition-colors"
+                      >
+                        <Eye className="w-3 h-3" />
+                        View
+                      </button>
+                    </td>
+                    <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <button onClick={() => handleReprint(r)} disabled={isReprintDisabled(r)}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#e2e2e8] text-xs font-medium text-[#031f41] hover:bg-[#f3f3f9] transition-colors disabled:opacity-50"
@@ -1450,13 +1468,97 @@ function HistoryView() {
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={8} className="px-5 py-12 text-center text-sm text-[#44474e]">No approved records found for the selected period.</td></tr>
+                  <tr><td colSpan={9} className="px-5 py-12 text-center text-sm text-[#44474e]">No approved records found for the selected period.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         )}
       </Card>
+
+      <Dialog open={!!selectedRow} onOpenChange={(open) => { if (!open) setSelectedRow(null); }}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Scan Details</DialogTitle>
+            <DialogDescription>
+              {selectedRow ? `Detailed information for scan ${selectedRow.scanId}` : "Select a scan to view its full details."}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRow && (
+            <div className="space-y-5 text-sm">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-[#e2e2e8] bg-[#f9f9ff] p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#44474e]">Scan summary</p>
+                  <div className="mt-2 space-y-1 text-[#191c20]">
+                    <p><span className="font-medium">Scan ID:</span> {selectedRow.scanId}</p>
+                    <p><span className="font-medium">Part Number:</span> {selectedRow.partNumber}</p>
+                    <p><span className="font-medium">Model:</span> {selectedRow.modelName}</p>
+                    <p><span className="font-medium">Category:</span> {selectedRow.category}</p>
+                    <p><span className="font-medium">Status:</span> {selectedRow.status}</p>
+                    <p><span className="font-medium">Timestamp:</span> {fmtTime(selectedRow.time)}</p>
+                    <p><span className="font-medium">Operator:</span> {selectedRow.operatorUsername || "—"}</p>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-[#e2e2e8] bg-[#f9f9ff] p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#44474e]">Readings</p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {Object.entries(selectedRow.readings || {}).map(([key, value]) => (
+                      <div key={key} className="rounded border border-[#e2e2e8] bg-white px-2.5 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-[#44474e]">{key}</p>
+                        <p className="font-semibold text-[#191c20]">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-lg border border-[#e2e2e8] p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#44474e]">Operations</p>
+                  {selectedRow.operations && selectedRow.operations.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      {selectedRow.operations.map((op, idx) => (
+                        <div key={`${op.name}-${idx}`} className="rounded border border-[#e2e2e8] bg-white p-2.5">
+                          <p className="font-semibold text-[#191c20]">{op.name}</p>
+                          <p className="text-xs text-[#44474e]">{op.unit}</p>
+                          <p className="mt-1 text-xs">Channel {op.channelX} {op.operator} Channel {op.channelY} = {op.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-[#44474e]">No operations recorded.</p>
+                  )}
+                </div>
+
+                <div className="grid gap-4">
+                  <div className="rounded-lg border border-[#e2e2e8] p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#44474e]">Reference</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {selectedRow.reference && Object.entries(selectedRow.reference).length > 0 ? Object.entries(selectedRow.reference).map(([key, value]) => (
+                        <div key={key} className="rounded border border-[#e2e2e8] bg-white px-2.5 py-2">
+                          <p className="text-[10px] uppercase tracking-wide text-[#44474e]">{key}</p>
+                          <p className="font-semibold text-[#191c20]">{value}</p>
+                        </div>
+                      )) : <p className="text-[#44474e]">No reference values.</p>}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-[#e2e2e8] p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#44474e]">Relative</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {selectedRow.relative && Object.entries(selectedRow.relative).length > 0 ? Object.entries(selectedRow.relative).map(([key, value]) => (
+                        <div key={key} className="rounded border border-[#e2e2e8] bg-white px-2.5 py-2">
+                          <p className="text-[10px] uppercase tracking-wide text-[#44474e]">{key}</p>
+                          <p className="font-semibold text-[#191c20]">{value}</p>
+                        </div>
+                      )) : <p className="text-[#44474e]">No relative values.</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {!loading && filtered.length > 0 && (
         <Card className="px-5 py-3">
