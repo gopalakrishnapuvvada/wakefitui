@@ -498,7 +498,7 @@ function DashboardView() {
             <tbody>
               {recent.map((r, i) => (
                 <tr key={r.scanId} className={`border-b border-[#e2e2e8] hover:bg-[#f9f9ff] transition-colors ${i === recent.length - 1 ? "border-0" : ""}`}>
-                  <td className="px-5 py-3 font-mono text-xs font-bold text-[#031f41]">#{r.scanId}</td>
+                  <td className="px-5 py-3 font-mono text-xs font-bold text-[#031f41]">{r.scanId}</td>
                   <td className="px-5 py-3 font-mono text-xs font-semibold text-[#2b6485]">{r.partNumber}</td>
                   <td className="px-5 py-3 font-medium text-[#191c20]">{r.modelName}</td>
                   <td className="px-5 py-3">
@@ -1842,6 +1842,10 @@ function ModelsView() {
         return `Label for channel ${param.channel} must be ${MAX_TEXT_LENGTH} characters or less.`;
       }
 
+      if (param.referenceValue === null || param.referenceValue === undefined || !Number.isFinite(param.referenceValue)) {
+        return `Reference Value is required for channel ${param.channel}.`;
+      }
+
       if (!param.unit.trim()) {
         return `Unit is required for channel ${param.channel}.`;
       }
@@ -2195,7 +2199,7 @@ function ModelsView() {
                         {/* Row 2: Reference Value · Unit · Min · Max · Active · Delete */}
                         <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto_auto] items-end gap-2 px-3 py-2.5">
                           <div>
-                            <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Reference Value</p>
+                            <p className="text-[9px] text-[#44474e] mb-1 font-medium uppercase tracking-wide">Reference Value <span className="text-[#E63946]">*</span></p>
                             <input type="number" step="any" value={p.referenceValue ?? ""} disabled={!p.active}
                               onChange={e => setFormParams(fp => fp.map((x, j) => j === i ? { ...x, referenceValue: e.target.value === "" ? null : Number(e.target.value) } : x))}
                               className="w-full px-2.5 py-1.5 rounded border border-[#e2e2e8] text-xs bg-white outline-none focus:border-[#031f41] transition-colors disabled:bg-[#f3f3f9]"
