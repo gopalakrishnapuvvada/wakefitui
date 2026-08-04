@@ -878,7 +878,7 @@ function ScanView({ session }: { session: Session }) {
                             ? "text-emerald-700"
                             : "text-amber-600"
                         }`}>
-                          Relative: <span className="font-semibold">{(result!.value - p.referenceValue).toFixed(2)} {p.unit}</span>
+                          Relative: <span className="font-semibold">{(p.referenceValue - result!.value).toFixed(2)} {p.unit}</span>
                         </span>
                       )}
                     </div>
