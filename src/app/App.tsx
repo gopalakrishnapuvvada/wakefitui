@@ -1119,6 +1119,7 @@ function ScanView({ session }: { session: Session }) {
 
 function HistoryView() {
   const [filterModel, setFilterModel] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<OverallStatus | "all">("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [search, setSearch] = useState("");
@@ -1226,12 +1227,16 @@ function HistoryView() {
         r.modelName.toLowerCase().includes(q) ||
         (r.operatorUsername || "").toLowerCase().includes(q));
     }
+    if (filterStatus !== "all") {
+      const targetStatus = filterStatus.toUpperCase();
+      data = data.filter(r => (r.status || "").toString().toUpperCase() === targetStatus);
+    }
     data.sort((a, b) => {
       const av = String(a[sortCol] ?? ""), bv = String(b[sortCol] ?? "");
       return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
     });
     return data;
-  }, [rows, search, sortCol, sortDir]);
+  }, [rows, search, filterStatus, sortCol, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 
@@ -1348,6 +1353,16 @@ function HistoryView() {
                   {model.modelName}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as OverallStatus | "all")}>
+            <SelectTrigger className="w-[180px] border-[#e2e2e8] bg-white text-sm text-[#191c20] focus-visible:border-[#031f41] focus-visible:ring-0">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="OK">OK</SelectItem>
+              <SelectItem value="NOT OK">NOT OK</SelectItem>
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2">
