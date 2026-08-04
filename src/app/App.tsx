@@ -1250,25 +1250,47 @@ function HistoryView() {
   }, [filtered, page, pageSize]);
 
   const exportHistory = () => {
-    const headers = ["Scan ID", "Part Number", "Model", "Status", "Timestamp", "Operator", "Readings"];
+    const headers = [
+      "Scan ID",
+      "Part Number",
+      "Model",
+      "Category",
+      "Status",
+      "Timestamp",
+      "Operator",
+      "Operator Role",
+      "Readings",
+      "Operations",
+      "Reference",
+      "Relative",
+    ];
+
     const rowsToExport = filtered.map(r => [
       r.scanId,
       r.partNumber,
       r.modelName,
+      r.category || "",
       (r.status || "UNKNOWN").toString().toUpperCase(),
       fmtTime(r.time),
       r.operatorUsername || "",
-      Object.entries(r.readings).map(([key, value]) => `${key}: ${value}`).join("; "),
+      r.operatorRole || "",
+      JSON.stringify(r.readings || {}),
+      JSON.stringify(r.operations || []),
+      JSON.stringify(r.reference || {}),
+      JSON.stringify(r.relative || {}),
     ]);
 
-    const tableRows = rowsToExport.map(row => `
-      <tr>${row.map(cell => `<td>${String(cell)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")}</td>`).join("")}</tr>`).join("");
+    const escapeCsvValue = (value: unknown) => {
+      if (value === null || value === undefined) return "";
+      const text = String(value);
+      if (/[",\n]/.test(text)) {
+        return `"${text.replace(/"/g, '""')}"`;
+      }
+      return text;
+    };
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><table><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr>${tableRows}</table></body></html>`;
-    const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+    const csv = [headers.join(","), ...rowsToExport.map(row => row.map(escapeCsvValue).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     const now = new Date();
@@ -1279,7 +1301,7 @@ function HistoryView() {
     const min = String(now.getMinutes()).padStart(2, "0");
     const ss = String(now.getSeconds()).padStart(2, "0");
     const ms = String(now.getMilliseconds()).padStart(3, "0");
-    const reportFileName = `wakefit_report_${dd}${mm}${yyyy}&${hh}${min}${ss}${ms}.xls`;
+    const reportFileName = `wakefit_report_${dd}${mm}${yyyy}&${hh}${min}${ss}${ms}.csv`;
     anchor.href = url;
     anchor.download = reportFileName;
     document.body.appendChild(anchor);
